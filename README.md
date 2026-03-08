@@ -14,6 +14,7 @@ Status: WIP. Usable local prototype. Not feature-complete. Expect schema churn, 
 - reply workflows for mentions and DMs
 - account-scoped blocklist maintenance
 - AI-ranked inbox for mixed mentions + DMs
+- animated system/light/dark theme switcher
 - local storage in `~/.birdclaw` by default
 
 ## Why
@@ -66,6 +67,7 @@ If you want a finished product today: this is not that yet.
 - DM filtering by sender follower count
 - DM filtering by derived influence score
 - sender bio visible in the DM UI
+- animated system / light / dark theme switcher with local persistence
 - local full-text search with FTS5
 - AI inbox for mixed mentions + DMs
 - OpenAI scoring hooks for low-signal filtering

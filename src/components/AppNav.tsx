@@ -1,4 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import { ThemeSlider } from "./ThemeSlider";
 
 const links = [
 	{ to: "/inbox", label: "Inbox" },
@@ -32,6 +33,7 @@ export function AppNav() {
 						</Link>
 					);
 				})}
+				<ThemeSlider />
 			</div>
 		</nav>
 	);

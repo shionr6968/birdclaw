@@ -3,6 +3,7 @@ import { createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import type { ReactNode } from "react";
 import { AppNav } from "#/components/AppNav";
+import { ThemeProvider, themeScript } from "#/lib/theme";
 
 import appCss from "../styles.css?url";
 
@@ -32,15 +33,18 @@ export const Route = createRootRoute({
 
 function RootDocument({ children }: { children: ReactNode }) {
 	return (
-		<html lang="en">
+		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
+				<script suppressHydrationWarning>{themeScript}</script>
 			</head>
 			<body>
-				<div className="site-shell">
-					<AppNav />
-					{children}
-				</div>
+				<ThemeProvider>
+					<div className="site-shell">
+						<AppNav />
+						{children}
+					</div>
+				</ThemeProvider>
 				<TanStackDevtools
 					config={{
 						position: "bottom-right",

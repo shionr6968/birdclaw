@@ -114,3 +114,24 @@ test("adds and removes a local blocklist entry", async ({ page }) => {
 
 	await expect(page.getByText(/Unblocked @amelia/i)).toBeVisible();
 });
+
+test("switches theme and keeps it after reload", async ({ page }) => {
+	await page.goto("/");
+
+	const darkButton = page.getByRole("button", { name: "Dark theme" });
+	await expect(darkButton).toBeEnabled();
+	await darkButton.click();
+	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+	await expect(page.locator("html")).toHaveAttribute(
+		"data-theme-preference",
+		"dark",
+	);
+
+	await page.reload();
+
+	await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+	await expect(page.locator("html")).toHaveAttribute(
+		"data-theme-preference",
+		"dark",
+	);
+});

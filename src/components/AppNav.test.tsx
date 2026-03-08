@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ThemeProvider } from "#/lib/theme";
 
 vi.mock("@tanstack/react-router", () => ({
 	Link: ({
@@ -27,12 +28,19 @@ import { AppNav } from "./AppNav";
 
 describe("AppNav", () => {
 	it("marks the active route", () => {
-		render(<AppNav />);
+		render(
+			<ThemeProvider>
+				<AppNav />
+			</ThemeProvider>,
+		);
 
 		expect(screen.getByRole("link", { name: "Inbox" })).toHaveClass(
 			"nav-link-active",
 		);
 		expect(screen.getByRole("link", { name: "Blocks" })).toBeInTheDocument();
 		expect(screen.getByText("Quiet signal for X.")).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "System default" }),
+		).toBeInTheDocument();
 	});
 });
