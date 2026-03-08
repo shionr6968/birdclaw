@@ -16,6 +16,7 @@ describe("xurl transport wrapper", () => {
 		vi.resetModules();
 		execFile.mockReset();
 		execFileAsyncMock.mockReset();
+		delete process.env.BIRDCLAW_DISABLE_LIVE_WRITES;
 	});
 
 	it("falls back to local mode when xurl is missing", async () => {
@@ -80,6 +81,25 @@ describe("xurl transport wrapper", () => {
 		});
 	});
 
+	it("looks up users by handle", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({
+			stdout: JSON.stringify({ data: [{ id: "7", username: "amelia" }] }),
+			stderr: "",
+		});
+		const { lookupUsersByHandles } = await import("./xurl");
+
+		await expect(lookupUsersByHandles(["@amelia"])).resolves.toEqual([
+			{ id: "7", username: "amelia" },
+		]);
+	});
+
+	it("returns an empty handle list when asked to resolve nothing", async () => {
+		const { lookupUsersByHandles } = await import("./xurl");
+
+		await expect(lookupUsersByHandles([])).resolves.toEqual([]);
+		expect(execFileAsyncMock).not.toHaveBeenCalled();
+	});
+
 	it("returns an empty user list when asked to hydrate nothing", async () => {
 		const { lookupUsersByIds } = await import("./xurl");
 
@@ -122,5 +142,80 @@ describe("xurl transport wrapper", () => {
 			"@sam",
 			"hello",
 		]);
+	});
+
+	it("suppresses live write shortcuts when disabled", async () => {
+		process.env.BIRDCLAW_DISABLE_LIVE_WRITES = "1";
+		const {
+			blockUserViaXurl,
+			dmViaXurl,
+			postViaXurl,
+			replyViaXurl,
+			unblockUserViaXurl,
+		} = await import("./xurl");
+
+		await expect(postViaXurl("ship")).resolves.toEqual({
+			ok: true,
+			output: "live writes disabled",
+		});
+		await expect(replyViaXurl("tweet_1", "reply")).resolves.toEqual({
+			ok: true,
+			output: "live writes disabled",
+		});
+		await expect(dmViaXurl("@sam", "hello")).resolves.toEqual({
+			ok: true,
+			output: "live writes disabled",
+		});
+		await expect(blockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "live writes disabled",
+		});
+		await expect(unblockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "live writes disabled",
+		});
+		expect(execFileAsyncMock).not.toHaveBeenCalled();
+	});
+
+	it("blocks and unblocks users via raw endpoints", async () => {
+		execFileAsyncMock
+			.mockResolvedValueOnce({ stdout: '{"data":true}', stderr: "" })
+			.mockResolvedValueOnce({ stdout: "", stderr: "deleted" });
+		const { blockUserViaXurl, unblockUserViaXurl } = await import("./xurl");
+
+		await expect(blockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: '{"data":true}',
+		});
+		await expect(unblockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "deleted",
+		});
+		expect(execFileAsyncMock).toHaveBeenNthCalledWith(1, "xurl", [
+			"-X",
+			"POST",
+			"/2/users/1/blocking",
+			"-d",
+			'{"target_user_id":"2"}',
+		]);
+		expect(execFileAsyncMock).toHaveBeenNthCalledWith(2, "xurl", [
+			"-X",
+			"DELETE",
+			"/2/users/1/blocking/2",
+		]);
+	});
+
+	it("reports block transport failures", async () => {
+		execFileAsyncMock.mockRejectedValue(new Error("transport down"));
+		const { blockUserViaXurl, unblockUserViaXurl } = await import("./xurl");
+
+		await expect(blockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: false,
+			output: "transport down",
+		});
+		await expect(unblockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: false,
+			output: "transport down",
+		});
 	});
 });

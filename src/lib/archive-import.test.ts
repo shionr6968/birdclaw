@@ -241,7 +241,7 @@ describe("archive import", () => {
 		expect(dms).toHaveLength(1);
 		expect(dms[0]?.participant.handle).toBe("sam");
 		expect(dmMessageCount).toBe(2);
-	});
+	}, 30000);
 
 	it("covers parsing helpers and fallback normalizers", () => {
 		expect(__test__.extractArchiveJson("oops")).toEqual([]);

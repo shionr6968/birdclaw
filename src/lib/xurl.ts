@@ -4,6 +4,10 @@ import type { TransportStatus } from "./types";
 
 const execFileAsync = promisify(execFile);
 
+function liveWritesDisabled() {
+	return process.env.BIRDCLAW_DISABLE_LIVE_WRITES === "1";
+}
+
 async function hasXurl(): Promise<boolean> {
 	try {
 		await execFileAsync("xurl", ["version"]);
@@ -45,6 +49,10 @@ export async function getTransportStatus(): Promise<TransportStatus> {
 async function runShortcut(
 	args: string[],
 ): Promise<{ ok: boolean; output: string }> {
+	if (liveWritesDisabled()) {
+		return { ok: true, output: "live writes disabled" };
+	}
+
 	try {
 		const { stdout, stderr } = await execFileAsync("xurl", args);
 		return { ok: true, output: stdout || stderr };
@@ -61,6 +69,25 @@ async function runJsonCommand(args: string[]) {
 	return JSON.parse(stdout) as Record<string, unknown>;
 }
 
+async function runMutationCommand(args: string[]) {
+	if (liveWritesDisabled()) {
+		return { ok: true, output: "live writes disabled" };
+	}
+
+	try {
+		const { stdout, stderr } = await execFileAsync("xurl", args);
+		return {
+			ok: true,
+			output: stdout || stderr || "ok",
+		};
+	} catch (error) {
+		return {
+			ok: false,
+			output: error instanceof Error ? error.message : "xurl execution failed",
+		};
+	}
+}
+
 export async function lookupUsersByIds(ids: string[]) {
 	if (ids.length === 0) {
 		return [];
@@ -72,6 +99,21 @@ export async function lookupUsersByIds(ids: string[]) {
 			"description,public_metrics,profile_image_url,created_at,verified",
 	});
 	const payload = await runJsonCommand([`/2/users?${query.toString()}`]);
+	const data = payload.data;
+	return Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
+}
+
+export async function lookupUsersByHandles(handles: string[]) {
+	if (handles.length === 0) {
+		return [];
+	}
+
+	const query = new URLSearchParams({
+		usernames: handles.map((item) => item.replace(/^@/, "")).join(","),
+		"user.fields":
+			"description,public_metrics,profile_image_url,created_at,verified",
+	});
+	const payload = await runJsonCommand([`/2/users/by?${query.toString()}`]);
 	const data = payload.data;
 	return Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
 }
@@ -97,5 +139,29 @@ export async function dmViaXurl(handle: string, text: string) {
 		"dm",
 		handle.startsWith("@") ? handle : `@${handle}`,
 		text,
+	]);
+}
+
+export async function blockUserViaXurl(
+	sourceUserId: string,
+	targetUserId: string,
+) {
+	return runMutationCommand([
+		"-X",
+		"POST",
+		`/2/users/${sourceUserId}/blocking`,
+		"-d",
+		JSON.stringify({ target_user_id: targetUserId }),
+	]);
+}
+
+export async function unblockUserViaXurl(
+	sourceUserId: string,
+	targetUserId: string,
+) {
+	return runMutationCommand([
+		"-X",
+		"DELETE",
+		`/2/users/${sourceUserId}/blocking/${targetUserId}`,
 	]);
 }

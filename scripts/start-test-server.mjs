@@ -16,6 +16,7 @@ const child = spawn(
 		env: {
 			...process.env,
 			BIRDCLAW_HOME: home,
+			BIRDCLAW_DISABLE_LIVE_WRITES: "1",
 		},
 	},
 );
