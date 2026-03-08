@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { resetBirdclawPathsForTests } from "./config";
 import { resetDatabaseForTests } from "./db";
+import { listInboxItems } from "./inbox";
 import {
 	getConversationThread,
 	listDmConversations,
@@ -79,5 +80,21 @@ describe("birdclaw queries", () => {
 
 		expect(mentions).toHaveLength(1);
 		expect(mentions[0]?.author.handle).toBe("amelia");
+	});
+
+	it("builds a mixed inbox with ranked mentions and dms", () => {
+		setupTempHome();
+
+		const inbox = listInboxItems({
+			kind: "mixed",
+			hideLowSignal: true,
+			minScore: 40,
+		});
+
+		expect(inbox.items[0]?.entityKind).toBe("dm");
+		expect(inbox.items.some((item) => item.entityKind === "mention")).toBe(
+			true,
+		);
+		expect(inbox.stats.total).toBeGreaterThan(0);
 	});
 });

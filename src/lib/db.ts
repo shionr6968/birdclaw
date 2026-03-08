@@ -67,6 +67,16 @@ export interface TweetActionsTable {
 	created_at: string;
 }
 
+export interface AiScoresTable {
+	entity_kind: string;
+	entity_id: string;
+	model: string;
+	score: number;
+	summary: string;
+	reasoning: string;
+	updated_at: string;
+}
+
 export interface BirdclawDatabase {
 	accounts: AccountsTable;
 	profiles: ProfilesTable;
@@ -74,6 +84,7 @@ export interface BirdclawDatabase {
 	dm_conversations: DmConversationsTable;
 	dm_messages: DmMessagesTable;
 	tweet_actions: TweetActionsTable;
+	ai_scores: AiScoresTable;
 }
 
 let nativeDb: BetterSqlite3.Database | undefined;
@@ -147,6 +158,17 @@ const SCHEMA_SQL = `
     created_at text not null
   );
 
+  create table if not exists ai_scores (
+    entity_kind text not null,
+    entity_id text not null,
+    model text not null,
+    score integer not null,
+    summary text not null,
+    reasoning text not null,
+    updated_at text not null,
+    primary key (entity_kind, entity_id)
+  );
+
   create virtual table if not exists tweets_fts using fts5(
     tweet_id unindexed,
     text
@@ -162,6 +184,7 @@ const SCHEMA_SQL = `
   create index if not exists idx_dm_conversations_account on dm_conversations(account_id, last_message_at desc);
   create index if not exists idx_dm_messages_conversation on dm_messages(conversation_id, created_at asc);
   create index if not exists idx_profiles_followers on profiles(followers_count desc);
+  create index if not exists idx_ai_scores_updated on ai_scores(updated_at desc);
 `;
 
 function initDatabase() {

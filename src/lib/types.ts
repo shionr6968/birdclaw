@@ -1,4 +1,5 @@
 export type ResourceKind = "home" | "mentions" | "dms";
+export type InboxKind = "mixed" | "mentions" | "dms";
 
 export type ReplyFilter = "all" | "replied" | "unreplied";
 
@@ -107,6 +108,7 @@ export interface QueryEnvelope {
 		mentions: number;
 		dms: number;
 		needsReply: number;
+		inbox: number;
 	};
 }
 
@@ -117,4 +119,38 @@ export interface QueryResponse {
 		conversation: DmConversationItem;
 		messages: DmMessageItem[];
 	} | null;
+}
+
+export interface InboxItem {
+	id: string;
+	entityId: string;
+	entityKind: "mention" | "dm";
+	accountId: string;
+	accountHandle: string;
+	title: string;
+	text: string;
+	createdAt: string;
+	needsReply: boolean;
+	influenceScore: number;
+	participant: ProfileRecord;
+	source: "heuristic" | "openai";
+	score: number;
+	summary: string;
+	reasoning: string;
+}
+
+export interface InboxQuery {
+	kind?: InboxKind;
+	minScore?: number;
+	hideLowSignal?: boolean;
+	limit?: number;
+}
+
+export interface InboxResponse {
+	items: InboxItem[];
+	stats: {
+		total: number;
+		openai: number;
+		heuristic: number;
+	};
 }

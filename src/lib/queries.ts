@@ -92,6 +92,7 @@ export async function getQueryEnvelope(): Promise<QueryEnvelope> {
 			mentions: Number(counts[1].count),
 			dms: Number(counts[2].count),
 			needsReply: Number(counts[3].count),
+			inbox: Number(counts[1].count) + Number(counts[3].count),
 		},
 		accounts: counts[4].map((row) => ({
 			id: row.id,

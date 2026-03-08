@@ -276,6 +276,21 @@ a {
   line-height: 1.6;
 }
 
+.inbox-title {
+  margin: 0;
+  font-family: 'Fraunces', serif;
+  font-size: 1.4rem;
+}
+
+.inbox-analysis {
+  padding: 16px 0 4px;
+  color: var(--ink-soft);
+}
+
+.inbox-analysis p {
+  margin: 8px 0 0;
+}
+
 .card-footer {
   align-items: center;
 }

@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { scoreInbox } from "#/lib/inbox";
 import { createDmReply, createPost, createTweetReply } from "#/lib/queries";
+import type { InboxKind } from "#/lib/types";
 
 export const Route = createFileRoute("/api/action")({
 	server: {
@@ -24,6 +26,11 @@ export const Route = createFileRoute("/api/action")({
 						body.conversationId || "",
 						body.text || "",
 					);
+				} else if (body.kind === "scoreInbox") {
+					result = await scoreInbox({
+						kind: ((body.scoreKind as InboxKind) || "mixed") as InboxKind,
+						limit: body.limit ? Number(body.limit) : 8,
+					});
 				} else {
 					return new Response(
 						JSON.stringify({ ok: false, message: "Unknown action kind" }),
