@@ -168,6 +168,7 @@ Flags:
 
 - export local mention tweets for scripts and agents
 - always emits JSON
+- supports `birdclaw` or cached `xurl`-compatible output
 - each item includes:
   - raw `text`
   - rendered `plainText`
@@ -177,9 +178,27 @@ Flags:
 
 Flags:
 - `--account <account-id>`
+- `--mode birdclaw|xurl`
 - `--replied`
 - `--unreplied`
+- `--refresh`
+- `--cache-ttl <seconds>`
 - `--limit <n>`
+
+Examples:
+
+```bash
+birdclaw mentions export "agent" --unreplied --limit 10
+birdclaw mentions export --mode xurl --limit 5
+birdclaw mentions export "codex" --mode xurl --limit 5
+birdclaw mentions export --mode xurl --refresh --cache-ttl 30 --limit 5
+```
+
+Notes:
+- `--mode xurl` mirrors the `xurl mentions` response shape: `data`, `includes.users`, `meta`
+- payload is cached in local SQLite and reused until the cache TTL expires
+- `--refresh` bypasses the cache and fetches live mentions immediately
+- query and reply-state filters still work in `xurl` mode, but the filtered response is rebuilt from the local canonical store after sync
 
 ### `dms list`
 

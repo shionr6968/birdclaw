@@ -190,9 +190,13 @@ pnpm cli db stats --json
 pnpm cli search tweets "local-first" --json
 pnpm cli search tweets "sync engine" --limit 20 --json
 pnpm cli mentions export "agent" --unreplied --limit 10
+pnpm cli mentions export --mode xurl --limit 5
+pnpm cli mentions export "codex" --mode xurl --limit 5
 ```
 
 `mentions export` always emits JSON with both `plainText` and `markdown` fields per tweet, so agents can ingest mention queues without parsing rich entities.
+
+`mentions export --mode xurl` returns an `xurl`-compatible payload, but cached locally in SQLite so repeated reads do not keep hitting the live API. Use `--refresh` to force a live fetch and `--cache-ttl <seconds>` to tune freshness.
 
 ### Search DMs
 
