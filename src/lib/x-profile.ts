@@ -46,7 +46,7 @@ function updateExistingProfileFromUser(
 	user: XurlMentionUser,
 ): ResolvedXProfile {
 	const username = String(user.username ?? "").replace(/^@/, "");
-	const displayName = String(user.name ?? username);
+	const displayName = String(user.name ?? "").trim() || username;
 	const followersCount = Number(user.public_metrics?.followers_count ?? 0);
 	const bio = String(user.description ?? "");
 	const avatarUrl = normalizeAvatarUrl(user.profile_image_url);
@@ -109,7 +109,7 @@ export function upsertProfileFromXUser(
 		return updateExistingProfileFromUser(db, existingRow.id, user);
 	}
 
-	const displayName = String(user.name ?? username);
+	const displayName = String(user.name ?? "").trim() || username;
 	const followersCount = Number(user.public_metrics?.followers_count ?? 0);
 	const bio = String(user.description ?? "");
 	const avatarUrl = normalizeAvatarUrl(user.profile_image_url);
