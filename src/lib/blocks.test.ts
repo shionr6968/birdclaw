@@ -195,6 +195,23 @@ describe("blocklist", () => {
 		expect(listBlocks({ account: "acct_primary" })).toHaveLength(1);
 	});
 
+	it("degrades to local-only blocking when xurl auth lookup throws", async () => {
+		setupTempHome();
+		mocks.lookupAuthenticatedUser.mockRejectedValue(
+			new Error("spawn xurl ENOENT"),
+		);
+		const { addBlock, listBlocks } = await import("./blocks");
+
+		const result = await addBlock("acct_primary", "amelia");
+
+		expect(result.ok).toBe(true);
+		expect(result.transport).toEqual({
+			ok: false,
+			output: "xurl block transport unavailable for this profile",
+		});
+		expect(listBlocks({ account: "acct_primary" })).toHaveLength(1);
+	});
+
 	it("syncs remote blocks, prunes stale remote rows, and preserves manual rows", async () => {
 		setupTempHome();
 		const { addBlock, listBlocks, syncBlocks } = await import("./blocks");

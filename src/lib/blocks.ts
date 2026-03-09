@@ -290,9 +290,13 @@ async function resolveProfile(query: string): Promise<ResolvedProfile> {
 }
 
 async function getAuthenticatedUserId() {
-	const me = await lookupAuthenticatedUser();
-	const id = me?.id;
-	return typeof id === "string" && id.length > 0 ? id : null;
+	try {
+		const me = await lookupAuthenticatedUser();
+		const id = me?.id;
+		return typeof id === "string" && id.length > 0 ? id : null;
+	} catch {
+		return null;
+	}
 }
 
 function upsertRemoteBlock(
