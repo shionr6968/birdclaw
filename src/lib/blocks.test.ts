@@ -8,6 +8,7 @@ import { getNativeDb, resetDatabaseForTests } from "./db";
 
 const mocks = vi.hoisted(() => ({
 	blockUserViaXurl: vi.fn(),
+	listBlockedUsers: vi.fn(),
 	lookupAuthenticatedUser: vi.fn(),
 	lookupUsersByHandles: vi.fn(),
 	lookupUsersByIds: vi.fn(),
@@ -16,6 +17,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./xurl", () => ({
 	blockUserViaXurl: mocks.blockUserViaXurl,
+	listBlockedUsers: mocks.listBlockedUsers,
 	lookupAuthenticatedUser: mocks.lookupAuthenticatedUser,
 	lookupUsersByHandles: mocks.lookupUsersByHandles,
 	lookupUsersByIds: mocks.lookupUsersByIds,
@@ -36,7 +38,9 @@ afterEach(() => {
 	resetDatabaseForTests();
 	resetBirdclawPathsForTests();
 	delete process.env.BIRDCLAW_HOME;
+	process.env.BIRDCLAW_DISABLE_LIVE_WRITES = "1";
 	mocks.blockUserViaXurl.mockReset();
+	mocks.listBlockedUsers.mockReset();
 	mocks.lookupAuthenticatedUser.mockReset();
 	mocks.lookupUsersByHandles.mockReset();
 	mocks.lookupUsersByIds.mockReset();
@@ -49,7 +53,9 @@ afterEach(() => {
 
 describe("blocklist", () => {
 	beforeEach(() => {
+		delete process.env.BIRDCLAW_DISABLE_LIVE_WRITES;
 		mocks.lookupAuthenticatedUser.mockResolvedValue({ id: "1" });
+		mocks.listBlockedUsers.mockResolvedValue({ items: [], nextToken: null });
 		mocks.blockUserViaXurl.mockResolvedValue({ ok: true, output: "blocked" });
 		mocks.unblockUserViaXurl.mockResolvedValue({
 			ok: true,
@@ -180,6 +186,130 @@ describe("blocklist", () => {
 			output: "xurl block transport unavailable for this profile",
 		});
 		expect(listBlocks({ account: "acct_primary" })).toHaveLength(1);
+	});
+
+	it("syncs remote blocks, prunes stale remote rows, and preserves manual rows", async () => {
+		setupTempHome();
+		const { addBlock, listBlocks, syncBlocks } = await import("./blocks");
+
+		await addBlock("acct_primary", "amelia");
+		const db = getNativeDb();
+		db.prepare(
+			"insert into profiles (id, handle, display_name, bio, followers_count, avatar_hue, created_at) values ('profile_user_99', 'stale', 'Stale', '', 0, 20, '2026-03-08T12:00:00.000Z')",
+		).run();
+		db.prepare(
+			"insert into blocks (account_id, profile_id, source, created_at) values ('acct_primary', 'profile_user_99', 'remote', '2026-03-08T12:00:00.000Z')",
+		).run();
+		mocks.listBlockedUsers
+			.mockResolvedValueOnce({
+				items: [
+					{
+						id: "8",
+						username: "avawires",
+						name: "Ava Wires",
+						description: "Infra reporter",
+						public_metrics: { followers_count: 632000 },
+					},
+				],
+				nextToken: "next",
+			})
+			.mockResolvedValueOnce({
+				items: [
+					{
+						id: "9",
+						username: "fortune",
+						name: "Fortune",
+						description: "source: trust me bro",
+						public_metrics: { followers_count: 9 },
+					},
+				],
+				nextToken: null,
+			});
+
+		const result = await syncBlocks("acct_primary");
+		const listed = listBlocks({ account: "acct_primary" });
+
+		expect(result.transport).toEqual({
+			ok: true,
+			output: "synced 2 remote blocks",
+		});
+		expect(mocks.listBlockedUsers).toHaveBeenNthCalledWith(1, "1", undefined);
+		expect(mocks.listBlockedUsers).toHaveBeenNthCalledWith(2, "1", "next");
+		expect(listed.map((item) => item.profile.handle).sort()).toEqual([
+			"amelia",
+			"avawires",
+			"fortune",
+		]);
+		expect(listed.some((item) => item.profile.handle === "stale")).toBe(false);
+		expect(
+			listed.find((item) => item.profile.handle === "amelia")?.source,
+		).toBe("manual");
+	});
+
+	it("skips remote sync when the authenticated xurl account does not match", async () => {
+		setupTempHome();
+		mocks.lookupAuthenticatedUser.mockResolvedValue({
+			id: "2",
+			username: "someoneelse",
+		});
+		const { syncBlocks, listBlocks } = await import("./blocks");
+
+		const result = await syncBlocks("acct_primary");
+
+		expect(result.transport).toEqual({
+			ok: false,
+			output: "xurl is authenticated as @someoneelse, not @steipete",
+		});
+		expect(listBlocks({ account: "acct_primary" })).toHaveLength(0);
+		expect(mocks.listBlockedUsers).not.toHaveBeenCalled();
+	});
+
+	it("returns a structured sync failure when xurl paging fails", async () => {
+		setupTempHome();
+		mocks.listBlockedUsers.mockRejectedValue(new Error("rate limited"));
+		const { syncBlocks, listBlocks } = await import("./blocks");
+
+		const result = await syncBlocks("acct_primary");
+
+		expect(result.transport).toEqual({
+			ok: false,
+			output: "rate limited",
+		});
+		expect(result.synced).toBe(false);
+		expect(listBlocks({ account: "acct_primary" })).toHaveLength(0);
+	});
+
+	it("keeps earlier pages when a later block sync page fails", async () => {
+		setupTempHome();
+		mocks.listBlockedUsers
+			.mockResolvedValueOnce({
+				items: [
+					{
+						id: "8",
+						username: "avawires",
+						name: "Ava Wires",
+						description: "Infra reporter",
+						public_metrics: { followers_count: 632000 },
+					},
+				],
+				nextToken: "next",
+			})
+			.mockRejectedValueOnce(new Error("rate limited"));
+		const { listBlocks, syncBlocks } = await import("./blocks");
+
+		const result = await syncBlocks("acct_primary");
+
+		expect(result.synced).toBe(true);
+		expect(result.syncedCount).toBe(1);
+		expect(result.transport).toEqual({
+			ok: false,
+			output: "partial block sync after 1 profiles: rate limited",
+		});
+		expect(
+			listBlocks({ account: "acct_primary" }).map(
+				(item) => item.profile.handle,
+			),
+		).toEqual(["avawires"]);
 	});
 
 	it("removes blocks locally when transport cannot run", async () => {

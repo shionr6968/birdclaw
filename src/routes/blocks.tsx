@@ -21,8 +21,10 @@ function BlocksRoute() {
 	const [matches, setMatches] = useState<BlockSearchItem[]>([]);
 	const [refreshTick, setRefreshTick] = useState(0);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isSyncing, setIsSyncing] = useState(false);
 	const [message, setMessage] = useState("");
 	const [error, setError] = useState("");
+	const hasAccountId = accountId.trim().length > 0;
 	const isReady = Boolean(meta);
 
 	useEffect(() => {
@@ -33,12 +35,17 @@ function BlocksRoute() {
 			.then((data: QueryEnvelope) => {
 				setMeta(data);
 				setAccountId(data.accounts[0]?.id ?? "acct_primary");
+				setError("");
 			})
 			.catch((error: unknown) => {
 				if (error instanceof DOMException && error.name === "AbortError") {
 					return;
 				}
-				throw error;
+				setError(
+					error instanceof Error
+						? error.message
+						: "Unable to load blocklist status",
+				);
 			});
 
 		return () => {
@@ -62,12 +69,15 @@ function BlocksRoute() {
 			.then((data: BlockListResponse) => {
 				setItems(data.items);
 				setMatches(data.matches);
+				setError("");
 			})
 			.catch((error: unknown) => {
 				if (error instanceof DOMException && error.name === "AbortError") {
 					return;
 				}
-				throw error;
+				setError(
+					error instanceof Error ? error.message : "Unable to load blocklist",
+				);
 			});
 
 		return () => {
@@ -75,10 +85,68 @@ function BlocksRoute() {
 		};
 	}, [accountId, refreshTick, search]);
 
+	useEffect(() => {
+		if (!hasAccountId) {
+			return;
+		}
+
+		const controller = new AbortController();
+		setIsSyncing(true);
+
+		fetch("/api/action", {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify({
+				kind: "syncBlocks",
+				accountId,
+			}),
+			signal: controller.signal,
+		})
+			.then((response) => response.json())
+			.then(
+				(data: {
+					ok?: boolean;
+					synced?: boolean;
+					syncedCount?: number;
+					transport?: { ok?: boolean; output?: string };
+				}) => {
+					if (data.ok === false) {
+						setError(data.transport?.output ?? "Block sync failed");
+						return;
+					}
+					setRefreshTick((value) => value + 1);
+					if (data.transport?.output?.includes("disabled")) {
+						return;
+					}
+					setMessage(
+						data.transport?.output ??
+							`Synced ${data.syncedCount ?? 0} remote blocks`,
+					);
+				},
+			)
+			.catch((error: unknown) => {
+				if (error instanceof DOMException && error.name === "AbortError") {
+					return;
+				}
+				setError(error instanceof Error ? error.message : "Block sync failed");
+			})
+			.finally(() => setIsSyncing(false));
+
+		return () => {
+			controller.abort();
+		};
+	}, [accountId, hasAccountId]);
+
 	const subtitle = useMemo(() => {
-		if (!meta) return "Loading local blocklist...";
+		if (!meta) {
+			return items.length > 0
+				? `${items.length} blocked profiles in view · loading transport status...`
+				: "Loading local blocklist...";
+		}
+		if (isSyncing)
+			return `Syncing remote blocklist · ${meta.transport.statusText}`;
 		return `${items.length} blocked profiles in view · ${meta.transport.statusText}`;
-	}, [items.length, meta]);
+	}, [isSyncing, items.length, meta]);
 
 	async function submit(
 		kind: "blockProfile" | "unblockProfile",
@@ -146,14 +214,14 @@ function BlocksRoute() {
 					</select>
 					<input
 						className="text-field"
-						disabled={!isReady}
+						disabled={!hasAccountId}
 						onChange={(event) => setSearch(event.target.value)}
 						placeholder="Handle, name, bio, or X URL"
 						value={search}
 					/>
 					<button
 						className="action-button"
-						disabled={!isReady || isSubmitting || !search.trim()}
+						disabled={!hasAccountId || isSubmitting || !search.trim()}
 						onClick={() => void submit("blockProfile", search)}
 						type="button"
 					>

@@ -12,6 +12,39 @@ describe("blocks route", () => {
 	});
 
 	it("loads blocks and submits block/unblock actions", async () => {
+		let blockResponse = {
+			items: [
+				{
+					accountId: "acct_primary",
+					accountHandle: "@steipete",
+					source: "manual",
+					blockedAt: "2026-03-08T12:00:00.000Z",
+					profile: {
+						id: "profile_user_7",
+						handle: "amelia",
+						displayName: "Amelia N",
+						bio: "Design systems",
+						followersCount: 4200,
+						avatarHue: 320,
+						createdAt: "2026-03-08T12:00:00.000Z",
+					},
+				},
+			],
+			matches: [
+				{
+					profile: {
+						id: "profile_user_42",
+						handle: "sam",
+						displayName: "Sam Altman",
+						bio: "Working on AGI",
+						followersCount: 3180000,
+						avatarHue: 210,
+						createdAt: "2026-03-08T12:00:00.000Z",
+					},
+					isBlocked: false,
+				},
+			],
+		};
 		const fetchMock = vi.fn(
 			async (input: RequestInfo | URL, init?: RequestInit) => {
 				const url = String(input);
@@ -28,43 +61,41 @@ describe("blocks route", () => {
 					);
 				}
 				if (url.includes("/api/blocks")) {
-					return new Response(
-						JSON.stringify({
+					return new Response(JSON.stringify(blockResponse));
+				}
+				if (url.endsWith("/api/action") && init?.method === "POST") {
+					const body = JSON.parse(String(init.body)) as Record<string, string>;
+					if (body.kind === "syncBlocks") {
+						blockResponse = {
+							...blockResponse,
 							items: [
+								...blockResponse.items,
 								{
 									accountId: "acct_primary",
 									accountHandle: "@steipete",
-									source: "manual",
-									blockedAt: "2026-03-08T12:00:00.000Z",
+									source: "remote",
+									blockedAt: "2026-03-09T12:00:00.000Z",
 									profile: {
-										id: "profile_user_7",
-										handle: "amelia",
-										displayName: "Amelia N",
-										bio: "Design systems",
-										followersCount: 4200,
-										avatarHue: 320,
+										id: "profile_user_8",
+										handle: "avawires",
+										displayName: "Ava Wires",
+										bio: "Infra reporter",
+										followersCount: 632000,
+										avatarHue: 262,
 										createdAt: "2026-03-08T12:00:00.000Z",
 									},
 								},
 							],
-							matches: [
-								{
-									profile: {
-										id: "profile_user_42",
-										handle: "sam",
-										displayName: "Sam Altman",
-										bio: "Working on AGI",
-										followersCount: 3180000,
-										avatarHue: 210,
-										createdAt: "2026-03-08T12:00:00.000Z",
-									},
-									isBlocked: false,
-								},
-							],
-						}),
-					);
-				}
-				if (url.endsWith("/api/action") && init?.method === "POST") {
+						};
+						return new Response(
+							JSON.stringify({
+								ok: true,
+								synced: true,
+								syncedCount: 1,
+								transport: { ok: true, output: "synced 1 remote blocks" },
+							}),
+						);
+					}
 					return new Response(
 						JSON.stringify({
 							ok: true,
@@ -84,6 +115,21 @@ describe("blocks route", () => {
 			await screen.findByRole("heading", {
 				name: "Maintain a clean blocklist locally.",
 			}),
+		).toBeInTheDocument();
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				"/api/action",
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						kind: "syncBlocks",
+						accountId: "acct_primary",
+					}),
+				}),
+			);
+		});
+		expect(
+			await screen.findByText(/synced 1 remote blocks/i),
 		).toBeInTheDocument();
 		fireEvent.change(
 			screen.getByPlaceholderText("Handle, name, bio, or X URL"),
@@ -111,7 +157,13 @@ describe("blocks route", () => {
 			);
 		});
 
-		fireEvent.click(screen.getByRole("button", { name: "Unblock" }));
+		const [firstUnblockButton] = screen.getAllByRole("button", {
+			name: "Unblock",
+		});
+		if (!firstUnblockButton) {
+			throw new Error("Missing unblock button");
+		}
+		fireEvent.click(firstUnblockButton);
 
 		await waitFor(() => {
 			expect(fetchMock).toHaveBeenCalledWith(

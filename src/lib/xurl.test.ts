@@ -17,6 +17,7 @@ describe("xurl transport wrapper", () => {
 		execFile.mockReset();
 		execFileAsyncMock.mockReset();
 		delete process.env.BIRDCLAW_DISABLE_LIVE_WRITES;
+		delete process.env.BIRDCLAW_XURL_RETRY_BASE_MS;
 	});
 
 	it("falls back to local mode when xurl is missing", async () => {
@@ -43,6 +44,19 @@ describe("xurl transport wrapper", () => {
 			rawStatus: "ok",
 		});
 		expect(execFileAsyncMock).toHaveBeenNthCalledWith(1, "xurl", ["version"]);
+	});
+
+	it("caches transport status for repeated callers", async () => {
+		execFileAsyncMock
+			.mockResolvedValueOnce({ stdout: "xurl 1.0", stderr: "" })
+			.mockResolvedValueOnce({ stdout: "ok", stderr: "" });
+		const { getTransportStatus } = await import("./xurl");
+
+		const first = await getTransportStatus();
+		const second = await getTransportStatus();
+
+		expect(first).toEqual(second);
+		expect(execFileAsyncMock).toHaveBeenCalledTimes(2);
 	});
 
 	it("falls back to local mode when xurl auth is broken", async () => {
@@ -91,6 +105,49 @@ describe("xurl transport wrapper", () => {
 		await expect(lookupUsersByHandles(["@amelia"])).resolves.toEqual([
 			{ id: "7", username: "amelia" },
 		]);
+	});
+
+	it("lists blocked users and returns the next page token", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({
+			stdout: JSON.stringify({
+				data: [{ id: "7", username: "amelia" }],
+				meta: { next_token: "next" },
+			}),
+			stderr: "",
+		});
+		const { listBlockedUsers } = await import("./xurl");
+
+		await expect(listBlockedUsers("1")).resolves.toEqual({
+			items: [{ id: "7", username: "amelia" }],
+			nextToken: "next",
+		});
+		expect(execFileAsyncMock).toHaveBeenCalledWith("xurl", [
+			"/2/users/1/blocking?max_results=100&user.fields=description%2Cpublic_metrics%2Ccreated_at",
+		]);
+	});
+
+	it("retries json reads when xurl returns a rate limit error", async () => {
+		process.env.BIRDCLAW_XURL_RETRY_BASE_MS = "0";
+		const rateLimitError = Object.assign(new Error("request failed"), {
+			stdout: JSON.stringify({
+				title: "Too Many Requests",
+				detail: "Too Many Requests",
+				status: 429,
+			}),
+		});
+		execFileAsyncMock
+			.mockRejectedValueOnce(rateLimitError)
+			.mockResolvedValueOnce({
+				stdout: JSON.stringify({ data: [{ id: "7", username: "amelia" }] }),
+				stderr: "",
+			});
+		const { listBlockedUsers } = await import("./xurl");
+
+		await expect(listBlockedUsers("1")).resolves.toEqual({
+			items: [{ id: "7", username: "amelia" }],
+			nextToken: null,
+		});
+		expect(execFileAsyncMock).toHaveBeenCalledTimes(2);
 	});
 
 	it("returns an empty handle list when asked to resolve nothing", async () => {

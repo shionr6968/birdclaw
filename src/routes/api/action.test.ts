@@ -7,10 +7,12 @@ const createTweetReplyMock = vi.fn();
 const createDmReplyMock = vi.fn();
 const removeBlockMock = vi.fn();
 const scoreInboxMock = vi.fn();
+const syncBlocksMock = vi.fn();
 
 vi.mock("#/lib/blocks", () => ({
 	addBlock: (...args: unknown[]) => addBlockMock(...args),
 	removeBlock: (...args: unknown[]) => removeBlockMock(...args),
+	syncBlocks: (...args: unknown[]) => syncBlocksMock(...args),
 }));
 
 vi.mock("#/lib/queries", () => ({
@@ -33,6 +35,7 @@ describe("api action route", () => {
 		createDmReplyMock.mockReset();
 		removeBlockMock.mockReset();
 		scoreInboxMock.mockReset();
+		syncBlocksMock.mockReset();
 	});
 
 	it("dispatches scoreInbox actions", async () => {
@@ -117,6 +120,7 @@ describe("api action route", () => {
 	it("dispatches blocklist actions", async () => {
 		addBlockMock.mockResolvedValue({ ok: true, action: "block" });
 		removeBlockMock.mockResolvedValue({ ok: true, action: "unblock" });
+		syncBlocksMock.mockResolvedValue({ ok: true, synced: true });
 
 		await Route.options.server.handlers.POST({
 			request: new Request("http://localhost/api/action", {
@@ -138,9 +142,19 @@ describe("api action route", () => {
 				}),
 			}),
 		});
+		await Route.options.server.handlers.POST({
+			request: new Request("http://localhost/api/action", {
+				method: "POST",
+				body: JSON.stringify({
+					kind: "syncBlocks",
+					accountId: "acct_primary",
+				}),
+			}),
+		});
 
 		expect(addBlockMock).toHaveBeenCalledWith("acct_primary", "@sam");
 		expect(removeBlockMock).toHaveBeenCalledWith("acct_primary", "@sam");
+		expect(syncBlocksMock).toHaveBeenCalledWith("acct_primary");
 	});
 
 	it("rejects unknown actions", async () => {
@@ -209,6 +223,7 @@ describe("api action route", () => {
 	it("uses fallback values when block payload fields are missing", async () => {
 		addBlockMock.mockResolvedValue({ ok: true });
 		removeBlockMock.mockResolvedValue({ ok: true });
+		syncBlocksMock.mockResolvedValue({ ok: true });
 
 		await Route.options.server.handlers.POST({
 			request: new Request("http://localhost/api/action", {
@@ -222,8 +237,15 @@ describe("api action route", () => {
 				body: JSON.stringify({ kind: "unblockProfile" }),
 			}),
 		});
+		await Route.options.server.handlers.POST({
+			request: new Request("http://localhost/api/action", {
+				method: "POST",
+				body: JSON.stringify({ kind: "syncBlocks" }),
+			}),
+		});
 
 		expect(addBlockMock).toHaveBeenCalledWith("acct_primary", "");
 		expect(removeBlockMock).toHaveBeenCalledWith("acct_primary", "");
+		expect(syncBlocksMock).toHaveBeenCalledWith("acct_primary");
 	});
 });

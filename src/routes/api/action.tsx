@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { addBlock, removeBlock } from "#/lib/blocks";
+import { addBlock, removeBlock, syncBlocks } from "#/lib/blocks";
 import { scoreInbox } from "#/lib/inbox";
 import { createDmReply, createPost, createTweetReply } from "#/lib/queries";
 import type { InboxKind } from "#/lib/types";
@@ -42,6 +42,8 @@ export const Route = createFileRoute("/api/action")({
 						body.accountId || "acct_primary",
 						body.query || "",
 					);
+				} else if (body.kind === "syncBlocks") {
+					result = await syncBlocks(body.accountId || "acct_primary");
 				} else {
 					return new Response(
 						JSON.stringify({ ok: false, message: "Unknown action kind" }),

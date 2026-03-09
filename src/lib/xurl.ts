@@ -3,9 +3,73 @@ import { promisify } from "node:util";
 import type { TransportStatus } from "./types";
 
 const execFileAsync = promisify(execFile);
+const TRANSPORT_STATUS_TTL_MS = 5 * 60_000;
+const JSON_RETRY_LIMIT = 6;
+
+let transportStatusCache:
+	| {
+			expiresAt: number;
+			pending?: Promise<TransportStatus>;
+			value?: TransportStatus;
+	  }
+	| undefined;
 
 function liveWritesDisabled() {
 	return process.env.BIRDCLAW_DISABLE_LIVE_WRITES === "1";
+}
+
+function getJsonRetryBaseDelayMs() {
+	const value = Number(process.env.BIRDCLAW_XURL_RETRY_BASE_MS ?? "2000");
+	return Number.isFinite(value) && value >= 0 ? value : 2000;
+}
+
+function stripAnsi(value: string) {
+	// biome-ignore lint/complexity/useRegexLiterals: ANSI escape parsing needs a constructor to avoid control-char lint failures.
+	return value.replace(new RegExp("\\u001b\\[[0-9;]*m", "g"), "");
+}
+
+function parseErrorPayload(error: unknown) {
+	const stdout =
+		typeof error === "object" &&
+		error !== null &&
+		"stdout" in error &&
+		typeof error.stdout === "string"
+			? stripAnsi(error.stdout)
+			: "";
+
+	const start = stdout.indexOf("{");
+	const end = stdout.lastIndexOf("}");
+	if (start < 0 || end <= start) {
+		return null;
+	}
+
+	try {
+		return JSON.parse(stdout.slice(start, end + 1)) as Record<string, unknown>;
+	} catch {
+		return null;
+	}
+}
+
+function getRetryDelayMs(error: unknown, attempt: number) {
+	const payload = parseErrorPayload(error);
+	const status = Number(payload?.status ?? 0);
+	if (status !== 429) {
+		return null;
+	}
+
+	const baseDelay = getJsonRetryBaseDelayMs();
+	return Math.min(baseDelay * 2 ** attempt, 30_000);
+}
+
+async function sleep(ms: number) {
+	if (ms <= 0) {
+		return;
+	}
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export function resetTransportStatusCache() {
+	transportStatusCache = undefined;
 }
 
 async function hasXurl(): Promise<boolean> {
@@ -18,31 +82,59 @@ async function hasXurl(): Promise<boolean> {
 }
 
 export async function getTransportStatus(): Promise<TransportStatus> {
-	const installed = await hasXurl();
-	if (!installed) {
-		return {
-			installed: false,
-			availableTransport: "local",
-			statusText: "xurl not installed. local mode active.",
-		};
+	const now = Date.now();
+	if (transportStatusCache?.value && transportStatusCache.expiresAt > now) {
+		return transportStatusCache.value;
 	}
 
+	if (transportStatusCache?.pending) {
+		return transportStatusCache.pending;
+	}
+
+	const pending = (async () => {
+		const installed = await hasXurl();
+		if (!installed) {
+			return {
+				installed: false,
+				availableTransport: "local",
+				statusText: "xurl not installed. local mode active.",
+			};
+		}
+
+		try {
+			const { stdout } = await execFileAsync("xurl", ["auth", "status"]);
+			return {
+				installed: true,
+				availableTransport: "xurl",
+				statusText: "xurl available",
+				rawStatus: stdout.trim(),
+			};
+		} catch (error) {
+			return {
+				installed: true,
+				availableTransport: "local",
+				statusText: `xurl detected but auth unavailable: ${
+					error instanceof Error ? error.message : "unknown error"
+				}`,
+			};
+		}
+	})();
+
+	transportStatusCache = {
+		expiresAt: 0,
+		pending,
+	};
+
 	try {
-		const { stdout } = await execFileAsync("xurl", ["auth", "status"]);
-		return {
-			installed: true,
-			availableTransport: "xurl",
-			statusText: "xurl available",
-			rawStatus: stdout.trim(),
+		const status = await pending;
+		transportStatusCache = {
+			expiresAt: Date.now() + TRANSPORT_STATUS_TTL_MS,
+			value: status,
 		};
+		return status;
 	} catch (error) {
-		return {
-			installed: true,
-			availableTransport: "local",
-			statusText: `xurl detected but auth unavailable: ${
-				error instanceof Error ? error.message : "unknown error"
-			}`,
-		};
+		transportStatusCache = undefined;
+		throw error;
 	}
 }
 
@@ -64,9 +156,19 @@ async function runShortcut(
 	}
 }
 
-async function runJsonCommand(args: string[]) {
-	const { stdout } = await execFileAsync("xurl", args);
-	return JSON.parse(stdout) as Record<string, unknown>;
+async function runJsonCommand(args: string[], attempt = 0) {
+	try {
+		const { stdout } = await execFileAsync("xurl", args);
+		return JSON.parse(stdout) as Record<string, unknown>;
+	} catch (error) {
+		const retryDelayMs = getRetryDelayMs(error, attempt);
+		if (retryDelayMs === null || attempt >= JSON_RETRY_LIMIT - 1) {
+			throw error;
+		}
+
+		await sleep(retryDelayMs);
+		return runJsonCommand(args, attempt + 1);
+	}
 }
 
 async function runMutationCommand(args: string[]) {
@@ -124,6 +226,36 @@ export async function lookupAuthenticatedUser() {
 	return data && typeof data === "object"
 		? (data as Record<string, unknown>)
 		: null;
+}
+
+export async function listBlockedUsers(
+	userId: string,
+	paginationToken?: string,
+) {
+	const query = new URLSearchParams({
+		max_results: "100",
+		"user.fields": "description,public_metrics,created_at",
+	});
+	if (paginationToken) {
+		query.set("pagination_token", paginationToken);
+	}
+
+	const payload = await runJsonCommand([
+		`/2/users/${userId}/blocking?${query}`,
+	]);
+	const data = Array.isArray(payload.data)
+		? (payload.data as Array<Record<string, unknown>>)
+		: [];
+	const meta =
+		payload.meta && typeof payload.meta === "object"
+			? (payload.meta as Record<string, unknown>)
+			: null;
+
+	return {
+		items: data,
+		nextToken:
+			typeof meta?.next_token === "string" ? String(meta.next_token) : null,
+	};
 }
 
 export async function postViaXurl(text: string) {

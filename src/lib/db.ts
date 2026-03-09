@@ -101,7 +101,7 @@ export interface BirdclawDatabase {
 let nativeDb: BetterSqlite3.Database | undefined;
 let kyselyDb: Kysely<BirdclawDatabase> | undefined;
 
-const SCHEMA_SQL = `
+const BASE_SCHEMA_SQL = `
   pragma journal_mode = wal;
   pragma foreign_keys = on;
 
@@ -200,7 +200,9 @@ const SCHEMA_SQL = `
     message_id unindexed,
     text
   );
+`;
 
+const INDEX_SQL = `
   create index if not exists idx_tweets_kind_created on tweets(kind, created_at desc);
   create index if not exists idx_tweets_account_created on tweets(account_id, created_at desc);
   create index if not exists idx_tweets_quoted on tweets(quoted_tweet_id);
@@ -238,14 +240,19 @@ function ensureTweetMetadataColumns(db: BetterSqlite3.Database) {
 	}
 }
 
+function ensureSchemaIndexes(db: BetterSqlite3.Database) {
+	db.exec(INDEX_SQL);
+}
+
 function initDatabase() {
 	ensureBirdclawDirs();
 
 	if (!nativeDb) {
 		const { dbPath } = getBirdclawPaths();
 		nativeDb = new BetterSqlite3(dbPath);
-		nativeDb.exec(SCHEMA_SQL);
+		nativeDb.exec(BASE_SCHEMA_SQL);
 		ensureTweetMetadataColumns(nativeDb);
+		ensureSchemaIndexes(nativeDb);
 		seedDemoData(nativeDb);
 	}
 
