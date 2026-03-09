@@ -292,9 +292,11 @@ describe("xurl transport wrapper", () => {
 		const {
 			blockUserViaXurl,
 			dmViaXurl,
+			muteUserViaXurl,
 			postViaXurl,
 			replyViaXurl,
 			unblockUserViaXurl,
+			unmuteUserViaXurl,
 		} = await import("./xurl");
 
 		await expect(postViaXurl("ship")).resolves.toEqual({
@@ -314,6 +316,14 @@ describe("xurl transport wrapper", () => {
 			output: "live writes disabled",
 		});
 		await expect(unblockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "live writes disabled",
+		});
+		await expect(muteUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "live writes disabled",
+		});
+		await expect(unmuteUserViaXurl("1", "2")).resolves.toEqual({
 			ok: true,
 			output: "live writes disabled",
 		});
@@ -350,7 +360,12 @@ describe("xurl transport wrapper", () => {
 
 	it("reports block transport failures", async () => {
 		execFileAsyncMock.mockRejectedValue(new Error("transport down"));
-		const { blockUserViaXurl, unblockUserViaXurl } = await import("./xurl");
+		const {
+			blockUserViaXurl,
+			muteUserViaXurl,
+			unblockUserViaXurl,
+			unmuteUserViaXurl,
+		} = await import("./xurl");
 
 		await expect(blockUserViaXurl("1", "2")).resolves.toEqual({
 			ok: false,
@@ -360,15 +375,57 @@ describe("xurl transport wrapper", () => {
 			ok: false,
 			output: "transport down",
 		});
+		await expect(muteUserViaXurl("1", "2")).resolves.toEqual({
+			ok: false,
+			output: "transport down",
+		});
+		await expect(unmuteUserViaXurl("1", "2")).resolves.toEqual({
+			ok: false,
+			output: "transport down",
+		});
 	});
 
 	it("uses ok as the default mutation output", async () => {
-		execFileAsyncMock.mockResolvedValueOnce({ stdout: "", stderr: "" });
-		const { blockUserViaXurl } = await import("./xurl");
+		execFileAsyncMock
+			.mockResolvedValueOnce({ stdout: "", stderr: "" })
+			.mockResolvedValueOnce({ stdout: "", stderr: "" });
+		const { blockUserViaXurl, muteUserViaXurl } = await import("./xurl");
 
 		await expect(blockUserViaXurl("1", "2")).resolves.toEqual({
 			ok: true,
 			output: "ok",
 		});
+		await expect(muteUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "ok",
+		});
+	});
+
+	it("mutes and unmutes users via raw endpoints", async () => {
+		execFileAsyncMock
+			.mockResolvedValueOnce({ stdout: '{"data":true}', stderr: "" })
+			.mockResolvedValueOnce({ stdout: "", stderr: "deleted" });
+		const { muteUserViaXurl, unmuteUserViaXurl } = await import("./xurl");
+
+		await expect(muteUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: '{"data":true}',
+		});
+		await expect(unmuteUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "deleted",
+		});
+		expect(execFileAsyncMock).toHaveBeenNthCalledWith(1, "xurl", [
+			"-X",
+			"POST",
+			"/2/users/1/muting",
+			"-d",
+			'{"target_user_id":"2"}',
+		]);
+		expect(execFileAsyncMock).toHaveBeenNthCalledWith(2, "xurl", [
+			"-X",
+			"DELETE",
+			"/2/users/1/muting/2",
+		]);
 	});
 });

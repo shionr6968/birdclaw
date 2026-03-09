@@ -325,3 +325,27 @@ export async function unblockUserViaXurl(
 		`/2/users/${sourceUserId}/blocking/${targetUserId}`,
 	]);
 }
+
+export async function muteUserViaXurl(
+	sourceUserId: string,
+	targetUserId: string,
+) {
+	return runMutationCommand([
+		"-X",
+		"POST",
+		`/2/users/${sourceUserId}/muting`,
+		"-d",
+		JSON.stringify({ target_user_id: targetUserId }),
+	]);
+}
+
+export async function unmuteUserViaXurl(
+	sourceUserId: string,
+	targetUserId: string,
+) {
+	return runMutationCommand([
+		"-X",
+		"DELETE",
+		`/2/users/${sourceUserId}/muting/${targetUserId}`,
+	]);
+}

@@ -10,6 +10,8 @@ const addBlockMock = vi.fn();
 const exportMentionItemsMock = vi.fn();
 const exportMentionsViaCachedXurlMock = vi.fn();
 const listBlocksMock = vi.fn();
+const addMuteMock = vi.fn();
+const listMutesMock = vi.fn();
 const listInboxItemsMock = vi.fn();
 const scoreInboxMock = vi.fn();
 const listTimelineItemsMock = vi.fn();
@@ -19,6 +21,7 @@ const createPostMock = vi.fn();
 const createTweetReplyMock = vi.fn();
 const createDmReplyMock = vi.fn();
 const removeBlockMock = vi.fn();
+const removeMuteMock = vi.fn();
 const spawnMock = vi.fn();
 const execFileAsyncMock = vi.fn();
 const execFileMock = vi.fn();
@@ -54,6 +57,12 @@ vi.mock("#/lib/blocks", () => ({
 vi.mock("#/lib/inbox", () => ({
 	listInboxItems: (...args: unknown[]) => listInboxItemsMock(...args),
 	scoreInbox: (...args: unknown[]) => scoreInboxMock(...args),
+}));
+
+vi.mock("#/lib/mutes", () => ({
+	addMute: (...args: unknown[]) => addMuteMock(...args),
+	listMutes: (...args: unknown[]) => listMutesMock(...args),
+	removeMute: (...args: unknown[]) => removeMuteMock(...args),
 }));
 
 vi.mock("#/lib/mentions-export", () => ({
@@ -101,6 +110,8 @@ describe("cli", () => {
 		exportMentionItemsMock.mockReset();
 		exportMentionsViaCachedXurlMock.mockReset();
 		listBlocksMock.mockReset();
+		addMuteMock.mockReset();
+		listMutesMock.mockReset();
 		listInboxItemsMock.mockReset();
 		scoreInboxMock.mockReset();
 		listTimelineItemsMock.mockReset();
@@ -110,6 +121,7 @@ describe("cli", () => {
 		createTweetReplyMock.mockReset();
 		createDmReplyMock.mockReset();
 		removeBlockMock.mockReset();
+		removeMuteMock.mockReset();
 		spawnMock.mockReset();
 		execFileAsyncMock.mockReset();
 
@@ -148,6 +160,8 @@ describe("cli", () => {
 			meta: { result_count: 1 },
 		});
 		listBlocksMock.mockReturnValue([{ accountId: "acct_primary" }]);
+		addMuteMock.mockResolvedValue({ ok: true, action: "mute" });
+		listMutesMock.mockReturnValue([{ accountId: "acct_primary" }]);
 		listInboxItemsMock.mockReturnValue([{ id: "dm:1" }]);
 		scoreInboxMock.mockResolvedValue({ ok: true });
 		listTimelineItemsMock.mockReturnValue([{ id: "tweet_1" }]);
@@ -163,6 +177,7 @@ describe("cli", () => {
 		});
 		createDmReplyMock.mockResolvedValue({ ok: true, messageId: "msg_new" });
 		removeBlockMock.mockResolvedValue({ ok: true, action: "unblock" });
+		removeMuteMock.mockResolvedValue({ ok: true, action: "unmute" });
 		execFileAsyncMock.mockRejectedValue(new Error("missing"));
 		spawnMock.mockReturnValue({
 			on: (_event: string, handler: (code: number) => void) => handler(0),
@@ -440,6 +455,63 @@ describe("cli", () => {
 			search: "sam",
 			limit: 50,
 		});
+		expect(addBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
+		expect(removeBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
+	});
+
+	it("dispatches mute and ban commands", async () => {
+		const { runCli } = await loadCli();
+
+		await runCli([
+			"node",
+			"birdclaw",
+			"mutes",
+			"list",
+			"--account",
+			"acct_studio",
+			"--search",
+			"sam",
+		]);
+		await runCli([
+			"node",
+			"birdclaw",
+			"mute",
+			"@sam",
+			"--account",
+			"acct_studio",
+		]);
+		await runCli([
+			"node",
+			"birdclaw",
+			"unmute",
+			"@sam",
+			"--account",
+			"acct_studio",
+		]);
+		await runCli([
+			"node",
+			"birdclaw",
+			"ban",
+			"@sam",
+			"--account",
+			"acct_studio",
+		]);
+		await runCli([
+			"node",
+			"birdclaw",
+			"unban",
+			"@sam",
+			"--account",
+			"acct_studio",
+		]);
+
+		expect(listMutesMock).toHaveBeenCalledWith({
+			account: "acct_studio",
+			search: "sam",
+			limit: 50,
+		});
+		expect(addMuteMock).toHaveBeenCalledWith("acct_studio", "@sam");
+		expect(removeMuteMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(addBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(removeBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 	});

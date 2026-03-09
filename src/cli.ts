@@ -10,6 +10,7 @@ import { ensureBirdclawDirs, getBirdclawPaths } from "#/lib/config";
 import { listInboxItems, scoreInbox } from "#/lib/inbox";
 import { exportMentionItems } from "#/lib/mentions-export";
 import { exportMentionsViaCachedXurl } from "#/lib/mentions-live";
+import { addMute, listMutes, removeMute } from "#/lib/mutes";
 import { hydrateProfilesFromX } from "#/lib/profile-hydration";
 import {
 	createDmReply,
@@ -277,6 +278,76 @@ blocksCommand
 	.option("--account <accountId>", "Account id", "acct_primary")
 	.action(async (query, options) => {
 		const result = await removeBlock(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+const mutesCommand = program
+	.command("mutes")
+	.description("Maintain the local mute list");
+
+mutesCommand
+	.command("list")
+	.option("--account <accountId>", "Account id")
+	.option("--search <query>", "Filter muted profiles")
+	.option("--limit <n>", "Limit results", "50")
+	.action((options) => {
+		const items = listMutes({
+			account: options.account,
+			search: options.search,
+			limit: Number(options.limit),
+		});
+		print(items, program.opts().json ?? false);
+	});
+
+mutesCommand
+	.command("add <query>")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await addMute(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+mutesCommand
+	.command("remove <query>")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await removeMute(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+program
+	.command("ban <query>")
+	.description("Alias for blocks add")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await addBlock(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+program
+	.command("unban <query>")
+	.description("Alias for blocks remove")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await removeBlock(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+program
+	.command("mute <query>")
+	.description("Mute a user for one account")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await addMute(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+program
+	.command("unmute <query>")
+	.description("Unmute a user for one account")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await removeMute(options.account, query);
 		print(result, program.opts().json ?? false);
 	});
 

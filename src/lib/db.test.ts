@@ -80,6 +80,20 @@ describe("database init", () => {
 			expect.arrayContaining(["cache_key", "value_json", "updated_at"]),
 		);
 
+		const muteColumnNames = db
+			.prepare("pragma table_info(mutes)")
+			.all() as Array<{
+			name: string;
+		}>;
+		expect(muteColumnNames.map((column) => column.name)).toEqual(
+			expect.arrayContaining([
+				"account_id",
+				"profile_id",
+				"source",
+				"created_at",
+			]),
+		);
+
 		const busyTimeout = db.pragma("busy_timeout", {
 			simple: true,
 		}) as number;
