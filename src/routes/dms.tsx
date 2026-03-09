@@ -8,6 +8,23 @@ import type {
 	QueryResponse,
 	ReplyFilter,
 } from "#/lib/types";
+import {
+	cx,
+	eyebrowClass,
+	heroControlsClass,
+	heroControlsDmClass,
+	heroCopyClass,
+	heroShellClass,
+	heroShellDmClass,
+	heroTitleClass,
+	pageWrapClass,
+	segmentActiveClass,
+	segmentClass,
+	segmentedClass,
+	textFieldClass,
+	textFieldShortClass,
+	textFieldWideClass,
+} from "#/lib/ui";
 
 export const Route = createFileRoute("/dms")({
 	component: DmsRoute,
@@ -165,43 +182,44 @@ function DmsRoute() {
 	}
 
 	return (
-		<main className="page-wrap">
-			<section className="hero-shell hero-shell-dm">
+		<main className={pageWrapClass}>
+			<section className={cx(heroShellClass, heroShellDmClass)}>
 				<div>
-					<p className="eyebrow">direct messages</p>
-					<h2 className="hero-title">
+					<p className={eyebrowClass}>direct messages</p>
+					<h2 className={heroTitleClass}>
 						Influence, bio, and reply state. No hunting.
 					</h2>
-					<p className="hero-copy">{subtitle}</p>
+					<p className={heroCopyClass}>{subtitle}</p>
 				</div>
-				<div className="hero-controls hero-controls-dm">
+				<div className={cx(heroControlsClass, heroControlsDmClass)}>
 					<input
-						className="text-field"
+						className={cx(textFieldClass, textFieldWideClass)}
 						onChange={(event) => setSearch(event.target.value)}
 						placeholder="Search DMs"
 						value={search}
 					/>
 					<input
-						className="text-field text-field-short"
+						className={cx(textFieldClass, textFieldShortClass)}
 						inputMode="numeric"
 						onChange={(event) => setMinFollowers(event.target.value)}
 						placeholder="Min followers"
 						value={minFollowers}
 					/>
 					<input
-						className="text-field text-field-short"
+						className={cx(textFieldClass, textFieldShortClass)}
 						inputMode="numeric"
 						onChange={(event) => setMinInfluenceScore(event.target.value)}
 						placeholder="Min score"
 						value={minInfluenceScore}
 					/>
-					<div className="segmented">
+					<div className={segmentedClass}>
 						{(["recent", "influence"] as const).map((value) => (
 							<button
 								key={value}
-								className={
-									value === sort ? "segment segment-active" : "segment"
-								}
+								className={cx(
+									segmentClass,
+									value === sort && segmentActiveClass,
+								)}
 								onClick={() => setSort(value)}
 								type="button"
 							>
@@ -209,13 +227,14 @@ function DmsRoute() {
 							</button>
 						))}
 					</div>
-					<div className="segmented">
+					<div className={segmentedClass}>
 						{(["all", "replied", "unreplied"] as const).map((value) => (
 							<button
 								key={value}
-								className={
-									value === replyFilter ? "segment segment-active" : "segment"
-								}
+								className={cx(
+									segmentClass,
+									value === replyFilter && segmentActiveClass,
+								)}
 								onClick={() => setReplyFilter(value)}
 								type="button"
 							>

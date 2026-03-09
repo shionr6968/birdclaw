@@ -1,4 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
+import {
+	brandMarkClass,
+	cx,
+	eyebrowClass,
+	navClass,
+	navLinkActiveClass,
+	navLinkClass,
+	navLinksClass,
+} from "#/lib/ui";
 import { ThemeSlider } from "./ThemeSlider";
 
 const links = [
@@ -15,19 +24,19 @@ export function AppNav() {
 	});
 
 	return (
-		<nav className="app-nav">
+		<nav className={navClass}>
 			<div>
-				<p className="eyebrow">birdclaw</p>
-				<h1 className="brand-mark">Quiet signal for X.</h1>
+				<p className={eyebrowClass}>birdclaw</p>
+				<h1 className={brandMarkClass}>Quiet signal for X.</h1>
 			</div>
-			<div className="nav-links">
+			<div className={navLinksClass}>
 				{links.map((link) => {
 					const active = pathname === link.to;
 					return (
 						<Link
 							key={link.to}
 							to={link.to}
-							className={active ? "nav-link nav-link-active" : "nav-link"}
+							className={cx(navLinkClass, active && navLinkActiveClass)}
 						>
 							{link.label}
 						</Link>

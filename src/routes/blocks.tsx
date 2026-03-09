@@ -8,6 +8,28 @@ import type {
 	BlockSearchItem,
 	QueryEnvelope,
 } from "#/lib/types";
+import {
+	actionButtonClass,
+	cardHeaderClass,
+	contentCardClass,
+	cx,
+	errorCopyClass,
+	eyebrowClass,
+	heroControlsBlocksClass,
+	heroControlsClass,
+	heroCopyClass,
+	heroShellClass,
+	heroTitleClass,
+	identityBlockClass,
+	metaRowClass,
+	mutedDotClass,
+	pageWrapClass,
+	stackGridClass,
+	textFieldClass,
+	textFieldShortClass,
+	textFieldWideClass,
+	timestampClass,
+} from "#/lib/ui";
 
 export const Route = createFileRoute("/blocks")({
 	component: BlocksRoute,
@@ -192,16 +214,18 @@ function BlocksRoute() {
 	}
 
 	return (
-		<main className="page-wrap">
-			<section className="hero-shell">
+		<main className={pageWrapClass}>
+			<section className={heroShellClass}>
 				<div>
-					<p className="eyebrow">blocks</p>
-					<h2 className="hero-title">Maintain a clean blocklist locally.</h2>
-					<p className="hero-copy">{subtitle}</p>
+					<p className={eyebrowClass}>blocks</p>
+					<h2 className={heroTitleClass}>
+						Maintain a clean blocklist locally.
+					</h2>
+					<p className={heroCopyClass}>{subtitle}</p>
 				</div>
-				<div className="hero-controls hero-controls-blocks">
+				<div className={cx(heroControlsClass, heroControlsBlocksClass)}>
 					<select
-						className="text-field text-field-short"
+						className={cx(textFieldClass, textFieldShortClass)}
 						disabled={!isReady}
 						onChange={(event) => setAccountId(event.target.value)}
 						value={accountId}
@@ -213,14 +237,14 @@ function BlocksRoute() {
 						))}
 					</select>
 					<input
-						className="text-field"
+						className={cx(textFieldClass, textFieldWideClass)}
 						disabled={!hasAccountId}
 						onChange={(event) => setSearch(event.target.value)}
 						placeholder="Handle, name, bio, or X URL"
 						value={search}
 					/>
 					<button
-						className="action-button"
+						className={actionButtonClass}
 						disabled={!hasAccountId || isSubmitting || !search.trim()}
 						onClick={() => void submit("blockProfile", search)}
 						type="button"
@@ -230,24 +254,27 @@ function BlocksRoute() {
 				</div>
 			</section>
 
-			{message ? <p className="timestamp">{message}</p> : null}
-			{error ? <p className="error-copy">{error}</p> : null}
+			{message ? <p className={timestampClass}>{message}</p> : null}
+			{error ? <p className={errorCopyClass}>{error}</p> : null}
 
 			{matches.length > 0 ? (
-				<section className="stack-grid">
+				<section className={stackGridClass}>
 					{matches.map((match) => (
-						<article className="content-card block-card" key={match.profile.id}>
-							<div className="card-header">
-								<div className="identity-block">
+						<article
+							className={cx(contentCardClass, "block-card")}
+							key={match.profile.id}
+						>
+							<div className={cardHeaderClass}>
+								<div className={identityBlockClass}>
 									<AvatarChip
 										hue={match.profile.avatarHue}
 										name={match.profile.displayName}
 									/>
 									<div>
 										<strong>{match.profile.displayName}</strong>
-										<div className="meta-row">
+										<div className={metaRowClass}>
 											<span>@{match.profile.handle}</span>
-											<span className="muted-dot" />
+											<span className={mutedDotClass} />
 											<span>
 												{formatCompactNumber(match.profile.followersCount)}{" "}
 												followers
@@ -256,7 +283,7 @@ function BlocksRoute() {
 									</div>
 								</div>
 								<button
-									className="action-button"
+									className={actionButtonClass}
 									onClick={() =>
 										void submit(
 											match.isBlocked ? "unblockProfile" : "blockProfile",
@@ -268,31 +295,31 @@ function BlocksRoute() {
 									{match.isBlocked ? "Unblock" : "Block"}
 								</button>
 							</div>
-							<p>{match.profile.bio}</p>
+							<p className="mt-2.5">{match.profile.bio}</p>
 						</article>
 					))}
 				</section>
 			) : null}
 
-			<section className="stack-grid">
+			<section className={stackGridClass}>
 				{items.map((item) => (
 					<article
-						className="content-card block-card"
+						className={cx(contentCardClass, "block-card")}
 						key={item.accountId + item.profile.id}
 					>
-						<div className="card-header">
-							<div className="identity-block">
+						<div className={cardHeaderClass}>
+							<div className={identityBlockClass}>
 								<AvatarChip
 									hue={item.profile.avatarHue}
 									name={item.profile.displayName}
 								/>
 								<div>
 									<strong>{item.profile.displayName}</strong>
-									<div className="meta-row">
+									<div className={metaRowClass}>
 										<span>@{item.profile.handle}</span>
-										<span className="muted-dot" />
+										<span className={mutedDotClass} />
 										<span>{item.accountHandle}</span>
-										<span className="muted-dot" />
+										<span className={mutedDotClass} />
 										<span>
 											{formatCompactNumber(item.profile.followersCount)}{" "}
 											followers
@@ -301,15 +328,15 @@ function BlocksRoute() {
 								</div>
 							</div>
 							<button
-								className="action-button"
+								className={actionButtonClass}
 								onClick={() => void submit("unblockProfile", item.profile.id)}
 								type="button"
 							>
 								Unblock
 							</button>
 						</div>
-						<p>{item.profile.bio}</p>
-						<p className="timestamp">
+						<p className="mt-2.5">{item.profile.bio}</p>
+						<p className={timestampClass}>
 							Blocked {new Date(item.blockedAt).toLocaleString()} ·{" "}
 							{item.source}
 						</p>

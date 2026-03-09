@@ -1,5 +1,23 @@
 import { formatCompactNumber, formatShortTimestamp } from "#/lib/present";
 import type { TimelineItem } from "#/lib/types";
+import {
+	actionButtonClass,
+	bioLineClass,
+	cardFooterClass,
+	cardHeaderClass,
+	contentCardClass,
+	cx,
+	identityBlockClass,
+	identityRowClass,
+	linkPreviewCardClass,
+	metaStackClass,
+	metricRowClass,
+	mutedDotClass,
+	pillAlertClass,
+	pillClass,
+	pillSoftClass,
+	timestampClass,
+} from "#/lib/ui";
 import { AvatarChip } from "./AvatarChip";
 import { EmbeddedTweetCard } from "./EmbeddedTweetCard";
 import { ProfilePreview } from "./ProfilePreview";
@@ -22,34 +40,37 @@ export function TimelineCard({
 	onReply: (tweetId: string) => void;
 }) {
 	return (
-		<article className="content-card">
-			<header className="card-header">
-				<div className="identity-block">
+		<article className={contentCardClass}>
+			<header className={cardHeaderClass}>
+				<div className={identityBlockClass}>
 					<AvatarChip
 						hue={item.author.avatarHue}
 						name={item.author.displayName}
 					/>
 					<div>
 						<ProfilePreview profile={item.author}>
-							<div className="identity-row">
+							<div className={identityRowClass}>
 								<strong>{item.author.displayName}</strong>
 								<span>@{item.author.handle}</span>
-								<span className="muted-dot" />
+								<span className={mutedDotClass} />
 								<span>
 									{formatCompactNumber(item.author.followersCount)} followers
 								</span>
 							</div>
 						</ProfilePreview>
-						<p className="bio-line">{item.author.bio}</p>
+						<p className={bioLineClass}>{item.author.bio}</p>
 					</div>
 				</div>
-				<div className="meta-stack">
+				<div className={metaStackClass}>
 					<span
-						className={item.isReplied ? "pill pill-soft" : "pill pill-alert"}
+						className={cx(
+							pillClass,
+							item.isReplied ? pillSoftClass : pillAlertClass,
+						)}
 					>
 						{item.isReplied ? "replied" : "needs reply"}
 					</span>
-					<span className="timestamp">
+					<span className={timestampClass}>
 						{formatShortTimestamp(item.createdAt)}
 					</span>
 				</div>
@@ -65,25 +86,27 @@ export function TimelineCard({
 			{getVisibleUrlCards(item).map((entry) => (
 				<a
 					key={entry.expandedUrl}
-					className="link-preview-card"
+					className={linkPreviewCardClass}
 					href={entry.expandedUrl}
 					rel="noreferrer"
 					target="_blank"
 				>
 					<strong>{entry.title ?? entry.displayUrl}</strong>
-					<span>{entry.description ?? entry.displayUrl}</span>
-					<span className="timestamp">{entry.displayUrl}</span>
+					<span className="text-[var(--ink-soft)]">
+						{entry.description ?? entry.displayUrl}
+					</span>
+					<span className={timestampClass}>{entry.displayUrl}</span>
 				</a>
 			))}
-			<footer className="card-footer">
-				<div className="metric-row">
+			<footer className={cardFooterClass}>
+				<div className={metricRowClass}>
 					<span>{formatCompactNumber(item.likeCount)} likes</span>
 					<span>{item.mediaCount} media</span>
 					<span>{item.bookmarked ? "bookmarked" : "not bookmarked"}</span>
 					<span>{item.accountHandle}</span>
 				</div>
 				<button
-					className="action-button"
+					className={actionButtonClass}
 					onClick={() => onReply(item.id)}
 					type="button"
 				>

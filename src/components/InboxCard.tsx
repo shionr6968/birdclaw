@@ -1,6 +1,32 @@
 import { Link } from "@tanstack/react-router";
 import { formatCompactNumber, formatShortTimestamp } from "#/lib/present";
 import type { InboxItem } from "#/lib/types";
+import {
+	actionButtonClass,
+	actionRowClass,
+	bioLineClass,
+	bodyCopyClass,
+	cardFooterClass,
+	cardHeaderClass,
+	composerBarClass,
+	composerInputClass,
+	composerShellClass,
+	contentCardClass,
+	cx,
+	eyebrowClass,
+	identityBlockClass,
+	identityRowClass,
+	inboxAnalysisClass,
+	inboxTitleClass,
+	metaStackClass,
+	metricRowClass,
+	mutedDotClass,
+	navLinkClass,
+	pillAlertClass,
+	pillClass,
+	pillSoftClass,
+	timestampClass,
+} from "#/lib/ui";
 import { AvatarChip } from "./AvatarChip";
 
 export function InboxCard({
@@ -19,52 +45,60 @@ export function InboxCard({
 	onReplySend: () => void;
 }) {
 	return (
-		<article className="content-card inbox-card">
-			<div className="card-header">
-				<div className="identity-block">
+		<article className={cx(contentCardClass, "inbox-card")}>
+			<div className={cardHeaderClass}>
+				<div className={identityBlockClass}>
 					<AvatarChip
 						hue={item.participant.avatarHue}
 						name={item.participant.displayName}
 					/>
 					<div>
-						<div className="identity-row">
+						<div className={identityRowClass}>
 							<strong>{item.participant.displayName}</strong>
 							<span>@{item.participant.handle}</span>
-							<span className="muted-dot" />
+							<span className={mutedDotClass} />
 							<span>
 								{formatCompactNumber(item.participant.followersCount)} followers
 							</span>
 						</div>
-						<p className="bio-line">{item.participant.bio}</p>
+						<p className={bioLineClass}>{item.participant.bio}</p>
 					</div>
 				</div>
-				<div className="meta-stack">
-					<span className="pill pill-soft">{item.entityKind}</span>
-					<span className="pill pill-alert">score {item.score}</span>
-					<span className="timestamp">
+				<div className={metaStackClass}>
+					<span className={cx(pillClass, pillSoftClass)}>
+						{item.entityKind}
+					</span>
+					<span className={cx(pillClass, pillAlertClass)}>
+						score {item.score}
+					</span>
+					<span className={timestampClass}>
 						{formatShortTimestamp(item.createdAt)}
 					</span>
 				</div>
 			</div>
-			<p className="eyebrow">ai triage</p>
-			<h3 className="inbox-title">{item.title}</h3>
-			<p className="body-copy">{item.text}</p>
-			<div className="inbox-analysis">
+			<p className={eyebrowClass}>ai triage</p>
+			<h3 className={inboxTitleClass}>{item.title}</h3>
+			<p className={bodyCopyClass}>{item.text}</p>
+			<div className={inboxAnalysisClass}>
 				<strong>{item.summary}</strong>
 				<p>{item.reasoning}</p>
 			</div>
-			<div className="card-footer">
-				<div className="metric-row">
+			<div className={cardFooterClass}>
+				<div className={metricRowClass}>
 					<span>{item.source}</span>
 					<span>influence {item.influenceScore}</span>
 					<span>{item.needsReply ? "needs reply" : "resolved"}</span>
 				</div>
-				<div className="action-row">
-					<button className="nav-link" onClick={onReplyToggle} type="button">
+				<div className={actionRowClass}>
+					<button
+						className={navLinkClass}
+						onClick={onReplyToggle}
+						type="button"
+					>
 						{isReplying ? "Close reply" : "Reply"}
 					</button>
 					<Link
-						className="action-button"
+						className={actionButtonClass}
 						to={item.entityKind === "dm" ? "/dms" : "/mentions"}
 					>
 						Open
@@ -72,9 +106,9 @@ export function InboxCard({
 				</div>
 			</div>
 			{isReplying ? (
-				<div className="composer-shell">
+				<div className={composerShellClass}>
 					<textarea
-						className="composer-input"
+						className={composerInputClass}
 						onChange={(event) => onReplyChange(event.target.value)}
 						placeholder={
 							item.entityKind === "dm"
@@ -84,10 +118,10 @@ export function InboxCard({
 						rows={4}
 						value={replyDraft}
 					/>
-					<div className="composer-bar">
-						<span className="timestamp">Send from inbox</span>
+					<div className={composerBarClass}>
+						<span className={timestampClass}>Send from inbox</span>
 						<button
-							className="action-button"
+							className={actionButtonClass}
 							disabled={!replyDraft.trim()}
 							onClick={onReplySend}
 							type="button"

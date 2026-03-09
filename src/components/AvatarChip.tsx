@@ -1,4 +1,5 @@
 import { getInitials } from "#/lib/present";
+import { avatarChipClass, avatarChipLargeClass, cx } from "#/lib/ui";
 
 export function AvatarChip({
 	name,
@@ -11,9 +12,11 @@ export function AvatarChip({
 }) {
 	return (
 		<span
-			className={
-				size === "large" ? "avatar-chip avatar-chip-large" : "avatar-chip"
-			}
+			className={cx(
+				avatarChipClass,
+				"avatar-chip",
+				size === "large" && cx(avatarChipLargeClass, "avatar-chip-large"),
+			)}
 			style={{ backgroundColor: `hsl(${hue} 72% 50%)` }}
 		>
 			{getInitials(name)}

@@ -1,6 +1,16 @@
 import type { ReactNode } from "react";
 import { formatCompactNumber } from "#/lib/present";
 import type { ProfileRecord } from "#/lib/types";
+import {
+	cx,
+	profilePreviewBioClass,
+	profilePreviewCardClass,
+	profilePreviewClass,
+	profilePreviewHandleClass,
+	profilePreviewHeaderClass,
+	profilePreviewMetaClass,
+	profilePreviewTriggerClass,
+} from "#/lib/ui";
 import { AvatarChip } from "./AvatarChip";
 
 export function ProfilePreview({
@@ -13,25 +23,25 @@ export function ProfilePreview({
 	className?: string;
 }) {
 	return (
-		<span className={`profile-preview ${className}`.trim()}>
+		<span className={cx(profilePreviewClass, "group", className)}>
 			<a
-				className="profile-preview-trigger"
+				className={profilePreviewTriggerClass}
 				href={`https://x.com/${profile.handle}`}
 				rel="noreferrer"
 				target="_blank"
 			>
 				{children}
 			</a>
-			<span className="profile-preview-card">
-				<span className="profile-preview-header">
+			<span className={profilePreviewCardClass}>
+				<span className={profilePreviewHeaderClass}>
 					<AvatarChip hue={profile.avatarHue} name={profile.displayName} />
 					<span>
 						<strong>{profile.displayName}</strong>
-						<span className="profile-preview-handle">@{profile.handle}</span>
+						<span className={profilePreviewHandleClass}>@{profile.handle}</span>
 					</span>
 				</span>
-				<span className="profile-preview-bio">{profile.bio}</span>
-				<span className="profile-preview-meta">
+				<span className={profilePreviewBioClass}>{profile.bio}</span>
+				<span className={profilePreviewMetaClass}>
 					{formatCompactNumber(profile.followersCount)} followers
 				</span>
 			</span>

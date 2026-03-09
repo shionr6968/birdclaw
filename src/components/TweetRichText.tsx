@@ -5,6 +5,12 @@ import type {
 	TweetMentionEntity,
 	TweetUrlEntity,
 } from "#/lib/types";
+import {
+	bodyCopyClass,
+	tweetHashtagClass,
+	tweetLinkClass,
+	tweetMentionClass,
+} from "#/lib/ui";
 import { ProfilePreview } from "./ProfilePreview";
 
 type Segment =
@@ -40,7 +46,7 @@ export function TweetRichText({
 	let cursor = 0;
 
 	return (
-		<p className={className}>
+		<p className={className === "body-copy" ? bodyCopyClass : className}>
 			{segments.map((segment, index) => {
 				if (
 					segment.start < cursor ||
@@ -64,14 +70,14 @@ export function TweetRichText({
 							key={`segment-${String(index)}`}
 							profile={segment.profile}
 						>
-							<span className="tweet-mention">@{segment.username}</span>
+							<span className={tweetMentionClass}>@{segment.username}</span>
 						</ProfilePreview>
 					);
 				} else if (segment.kind === "url") {
 					node = (
 						<a
 							key={`segment-${String(index)}`}
-							className="tweet-link"
+							className={tweetLinkClass}
 							href={segment.expandedUrl}
 							rel="noreferrer"
 							target="_blank"
@@ -81,7 +87,10 @@ export function TweetRichText({
 					);
 				} else if (segment.kind === "hashtag") {
 					node = (
-						<span className="tweet-hashtag" key={`segment-${String(index)}`}>
+						<span
+							className={tweetHashtagClass}
+							key={`segment-${String(index)}`}
+						>
 							#{segment.tag}
 						</span>
 					);

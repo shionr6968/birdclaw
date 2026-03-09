@@ -1,5 +1,13 @@
 import { formatShortTimestamp } from "#/lib/present";
 import type { EmbeddedTweet } from "#/lib/types";
+import {
+	embeddedTweetAuthorClass,
+	embeddedTweetCardClass,
+	embeddedTweetCopyClass,
+	embeddedTweetHeaderClass,
+	embeddedTweetLabelClass,
+	timestampClass,
+} from "#/lib/ui";
 import { ProfilePreview } from "./ProfilePreview";
 import { TweetMediaGrid } from "./TweetMediaGrid";
 import { TweetRichText } from "./TweetRichText";
@@ -12,21 +20,21 @@ export function EmbeddedTweetCard({
 	label: string;
 }) {
 	return (
-		<section className="embedded-tweet-card">
-			<p className="embedded-tweet-label">{label}</p>
-			<header className="embedded-tweet-header">
+		<section className={embeddedTweetCardClass}>
+			<p className={embeddedTweetLabelClass}>{label}</p>
+			<header className={embeddedTweetHeaderClass}>
 				<ProfilePreview profile={item.author}>
-					<span className="embedded-tweet-author">
+					<span className={embeddedTweetAuthorClass}>
 						<strong>{item.author.displayName}</strong>
 						<span>@{item.author.handle}</span>
 					</span>
 				</ProfilePreview>
-				<span className="timestamp">
+				<span className={timestampClass}>
 					{formatShortTimestamp(item.createdAt)}
 				</span>
 			</header>
 			<TweetRichText
-				className="embedded-tweet-copy"
+				className={embeddedTweetCopyClass}
 				entities={item.entities}
 				text={item.text}
 			/>

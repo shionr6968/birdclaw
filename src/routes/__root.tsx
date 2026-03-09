@@ -4,6 +4,7 @@ import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import type { ReactNode } from "react";
 import { AppNav } from "#/components/AppNav";
 import { ThemeProvider, themeScript } from "#/lib/theme";
+import { bodyClass, siteShellClass } from "#/lib/ui";
 
 import appCss from "../styles.css?url";
 
@@ -38,9 +39,9 @@ function RootDocument({ children }: { children: ReactNode }) {
 				<HeadContent />
 				<script suppressHydrationWarning>{themeScript}</script>
 			</head>
-			<body>
+			<body className={bodyClass}>
 				<ThemeProvider>
-					<div className="site-shell">
+					<div className={siteShellClass}>
 						<AppNav />
 						{children}
 					</div>

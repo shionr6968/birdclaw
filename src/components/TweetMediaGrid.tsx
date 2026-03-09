@@ -1,4 +1,5 @@
 import type { TweetMediaItem } from "#/lib/types";
+import { tweetMediaGridClass, tweetMediaTileClass } from "#/lib/ui";
 
 export function TweetMediaGrid({ items }: { items: TweetMediaItem[] }) {
 	if (items.length === 0) {
@@ -6,13 +7,11 @@ export function TweetMediaGrid({ items }: { items: TweetMediaItem[] }) {
 	}
 
 	return (
-		<div
-			className={`tweet-media-grid tweet-media-grid-${Math.min(items.length, 4)}`}
-		>
+		<div className={tweetMediaGridClass(Math.min(items.length, 4))}>
 			{items.slice(0, 4).map((item, index) => (
 				<a
 					key={item.url + String(index)}
-					className="tweet-media-tile"
+					className={tweetMediaTileClass(index, Math.min(items.length, 4))}
 					href={item.url}
 					rel="noreferrer"
 					target="_blank"
@@ -20,12 +19,12 @@ export function TweetMediaGrid({ items }: { items: TweetMediaItem[] }) {
 					{item.type === "image" ? (
 						<img
 							alt={item.altText ?? `Tweet media ${String(index + 1)}`}
-							className="tweet-media-image"
+							className="tweet-media-image block size-full object-cover"
 							loading="lazy"
 							src={item.thumbnailUrl ?? item.url}
 						/>
 					) : (
-						<span className="tweet-media-fallback">
+						<span className="tweet-media-fallback grid min-h-40 place-items-center font-semibold text-[var(--ink-soft)]">
 							{item.type === "video"
 								? "Video"
 								: item.type === "gif"

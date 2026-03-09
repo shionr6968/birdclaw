@@ -7,6 +7,21 @@ import type {
 	ReplyFilter,
 	TimelineItem,
 } from "#/lib/types";
+import {
+	cx,
+	eyebrowClass,
+	heroControlsClass,
+	heroCopyClass,
+	heroShellClass,
+	heroTitleClass,
+	pageWrapClass,
+	segmentActiveClass,
+	segmentClass,
+	segmentedClass,
+	stackGridClass,
+	textFieldClass,
+	textFieldWideClass,
+} from "#/lib/ui";
 
 export const Route = createFileRoute("/")({
 	component: HomeRoute,
@@ -63,29 +78,30 @@ function HomeRoute() {
 	}
 
 	return (
-		<main className="page-wrap">
-			<section className="hero-shell">
+		<main className={pageWrapClass}>
+			<section className={heroShellClass}>
 				<div>
-					<p className="eyebrow">home timeline</p>
-					<h2 className="hero-title">
+					<p className={eyebrowClass}>home timeline</p>
+					<h2 className={heroTitleClass}>
 						Read first. Act only where signal survives.
 					</h2>
-					<p className="hero-copy">{subtitle}</p>
+					<p className={heroCopyClass}>{subtitle}</p>
 				</div>
-				<div className="hero-controls">
+				<div className={heroControlsClass}>
 					<input
-						className="text-field"
+						className={cx(textFieldClass, textFieldWideClass)}
 						onChange={(event) => setSearch(event.target.value)}
 						placeholder="Search local timeline"
 						value={search}
 					/>
-					<div className="segmented">
+					<div className={segmentedClass}>
 						{(["all", "replied", "unreplied"] as const).map((value) => (
 							<button
 								key={value}
-								className={
-									value === replyFilter ? "segment segment-active" : "segment"
-								}
+								className={cx(
+									segmentClass,
+									value === replyFilter && segmentActiveClass,
+								)}
 								onClick={() => setReplyFilter(value)}
 								type="button"
 							>
@@ -96,7 +112,7 @@ function HomeRoute() {
 				</div>
 			</section>
 
-			<section className="stack-grid">
+			<section className={stackGridClass}>
 				{items.map((item) => (
 					<TimelineCard key={item.id} item={item} onReply={replyToTweet} />
 				))}

@@ -7,6 +7,25 @@ import type {
 	InboxResponse,
 	QueryEnvelope,
 } from "#/lib/types";
+import {
+	actionButtonClass,
+	cx,
+	eyebrowClass,
+	heroControlsClass,
+	heroCopyClass,
+	heroShellClass,
+	heroTitleClass,
+	navLinkActiveClass,
+	navLinkClass,
+	pageWrapClass,
+	segmentActiveClass,
+	segmentClass,
+	segmentedClass,
+	stackGridClass,
+	textFieldClass,
+	textFieldShortClass,
+	timestampClass,
+} from "#/lib/ui";
 
 export const Route = createFileRoute("/inbox")({
 	component: InboxRoute,
@@ -102,21 +121,22 @@ function InboxRoute() {
 	}
 
 	return (
-		<main className="page-wrap">
-			<section className="hero-shell">
+		<main className={pageWrapClass}>
+			<section className={heroShellClass}>
 				<div>
-					<p className="eyebrow">inbox</p>
-					<h2 className="hero-title">AI triage for mentions and DMs.</h2>
-					<p className="hero-copy">{subtitle}</p>
+					<p className={eyebrowClass}>inbox</p>
+					<h2 className={heroTitleClass}>AI triage for mentions and DMs.</h2>
+					<p className={heroCopyClass}>{subtitle}</p>
 				</div>
-				<div className="hero-controls">
-					<div className="segmented">
+				<div className={heroControlsClass}>
+					<div className={segmentedClass}>
 						{(["mixed", "mentions", "dms"] as const).map((value) => (
 							<button
 								key={value}
-								className={
-									value === kind ? "segment segment-active" : "segment"
-								}
+								className={cx(
+									segmentClass,
+									value === kind && segmentActiveClass,
+								)}
 								onClick={() => setKind(value)}
 								type="button"
 							>
@@ -125,21 +145,21 @@ function InboxRoute() {
 						))}
 					</div>
 					<input
-						className="text-field text-field-short"
+						className={cx(textFieldClass, textFieldShortClass)}
 						inputMode="numeric"
 						onChange={(event) => setMinScore(event.target.value)}
 						placeholder="Min AI score"
 						value={minScore}
 					/>
 					<button
-						className={hideLowSignal ? "nav-link nav-link-active" : "nav-link"}
+						className={cx(navLinkClass, hideLowSignal && navLinkActiveClass)}
 						onClick={() => setHideLowSignal((value) => !value)}
 						type="button"
 					>
 						{hideLowSignal ? "Hide low-signal" : "Show all"}
 					</button>
 					<button
-						className="action-button"
+						className={actionButtonClass}
 						disabled={isScoring}
 						onClick={() => void scoreNow()}
 						type="button"
@@ -149,7 +169,7 @@ function InboxRoute() {
 				</div>
 			</section>
 
-			<section className="stack-grid">
+			<section className={stackGridClass}>
 				{items.map((item) => (
 					<InboxCard
 						key={item.id}
@@ -170,7 +190,9 @@ function InboxRoute() {
 					/>
 				))}
 			</section>
-			{isSendingReply ? <p className="timestamp">Sending reply...</p> : null}
+			{isSendingReply ? (
+				<p className={timestampClass}>Sending reply...</p>
+			) : null}
 		</main>
 	);
 }

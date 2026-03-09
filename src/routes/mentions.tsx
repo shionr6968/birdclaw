@@ -7,6 +7,21 @@ import type {
 	ReplyFilter,
 	TimelineItem,
 } from "#/lib/types";
+import {
+	cx,
+	eyebrowClass,
+	heroControlsClass,
+	heroCopyClass,
+	heroShellClass,
+	heroTitleClass,
+	pageWrapClass,
+	segmentActiveClass,
+	segmentClass,
+	segmentedClass,
+	stackGridClass,
+	textFieldClass,
+	textFieldWideClass,
+} from "#/lib/ui";
 
 export const Route = createFileRoute("/mentions")({
 	component: MentionsRoute,
@@ -63,29 +78,30 @@ function MentionsRoute() {
 	}
 
 	return (
-		<main className="page-wrap">
-			<section className="hero-shell">
+		<main className={pageWrapClass}>
+			<section className={heroShellClass}>
 				<div>
-					<p className="eyebrow">mentions and replies</p>
-					<h2 className="hero-title">
+					<p className={eyebrowClass}>mentions and replies</p>
+					<h2 className={heroTitleClass}>
 						Keep the actionable queue small and visible.
 					</h2>
-					<p className="hero-copy">{subtitle}</p>
+					<p className={heroCopyClass}>{subtitle}</p>
 				</div>
-				<div className="hero-controls">
+				<div className={heroControlsClass}>
 					<input
-						className="text-field"
+						className={cx(textFieldClass, textFieldWideClass)}
 						onChange={(event) => setSearch(event.target.value)}
 						placeholder="Search mentions"
 						value={search}
 					/>
-					<div className="segmented">
+					<div className={segmentedClass}>
 						{(["all", "replied", "unreplied"] as const).map((value) => (
 							<button
 								key={value}
-								className={
-									value === replyFilter ? "segment segment-active" : "segment"
-								}
+								className={cx(
+									segmentClass,
+									value === replyFilter && segmentActiveClass,
+								)}
 								onClick={() => setReplyFilter(value)}
 								type="button"
 							>
@@ -96,7 +112,7 @@ function MentionsRoute() {
 				</div>
 			</section>
 
-			<section className="stack-grid">
+			<section className={stackGridClass}>
 				{items.map((item) => (
 					<TimelineCard key={item.id} item={item} onReply={replyToTweet} />
 				))}
