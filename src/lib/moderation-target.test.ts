@@ -1,0 +1,147 @@
+// @vitest-environment node
+import { mkdtempSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetBirdclawPathsForTests } from "./config";
+import { getNativeDb, resetDatabaseForTests } from "./db";
+
+const mocks = vi.hoisted(() => ({
+	lookupAuthenticatedUser: vi.fn(),
+	lookupUsersByHandles: vi.fn(),
+	lookupUsersByIds: vi.fn(),
+}));
+
+vi.mock("./xurl", () => ({
+	lookupAuthenticatedUser: mocks.lookupAuthenticatedUser,
+	lookupUsersByHandles: mocks.lookupUsersByHandles,
+	lookupUsersByIds: mocks.lookupUsersByIds,
+}));
+
+const tempDirs: string[] = [];
+
+function makeTempHome() {
+	const tempRoot = mkdtempSync(
+		path.join(os.tmpdir(), "birdclaw-moderation-target-"),
+	);
+	tempDirs.push(tempRoot);
+	process.env.BIRDCLAW_HOME = tempRoot;
+	return getNativeDb();
+}
+
+afterEach(() => {
+	resetDatabaseForTests();
+	resetBirdclawPathsForTests();
+	delete process.env.BIRDCLAW_HOME;
+
+	for (const dir of tempDirs.splice(0)) {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+describe("moderation target helpers", () => {
+	beforeEach(() => {
+		mocks.lookupAuthenticatedUser.mockReset();
+		mocks.lookupUsersByHandles.mockReset();
+		mocks.lookupUsersByIds.mockReset();
+	});
+
+	it("normalizes handles and x urls", async () => {
+		const { normalizeProfileQuery } = await import("./moderation-target");
+
+		expect(normalizeProfileQuery(" @steipete ")).toBe("steipete");
+		expect(normalizeProfileQuery("https://x.com/steipete")).toBe("steipete");
+		expect(normalizeProfileQuery("")).toBe("");
+	});
+
+	it("resolves default accounts and local profiles", async () => {
+		const db = makeTempHome();
+		db.prepare(
+			`
+      insert into profiles (
+        id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at
+      ) values (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+		).run(
+			"profile_user_77",
+			"external77",
+			"External 77",
+			"",
+			0,
+			11,
+			null,
+			"2026-03-09T00:00:00.000Z",
+		);
+		const { getAccountHandle, getDefaultAccountId, resolveLocalProfile } =
+			await import("./moderation-target");
+
+		expect(getDefaultAccountId(db)).toBe("acct_primary");
+		expect(getAccountHandle(db, "acct_primary")).toBe("steipete");
+		expect(resolveLocalProfile(db, "external77")).toEqual({
+			profile: expect.objectContaining({
+				id: "profile_user_77",
+				handle: "external77",
+			}),
+			externalUserId: "77",
+		});
+		expect(resolveLocalProfile(db, "missing")).toBeNull();
+	});
+
+	it("resolves remote profiles and falls back to local matches on lookup failure", async () => {
+		const db = makeTempHome();
+		db.prepare(
+			`
+      insert into profiles (
+        id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at
+      ) values (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+		).run(
+			"profile_group_1",
+			"groupdm",
+			"Group DM",
+			"",
+			0,
+			1,
+			null,
+			"2026-03-09T00:00:00.000Z",
+		);
+		mocks.lookupUsersByHandles
+			.mockResolvedValueOnce([
+				{
+					id: "88",
+					username: "amelia",
+					name: "Amelia",
+				},
+			])
+			.mockRejectedValueOnce(new Error("network down"));
+		const { resolveProfile } = await import("./moderation-target");
+
+		await expect(resolveProfile("@amelia")).resolves.toMatchObject({
+			profile: expect.objectContaining({
+				id: "profile_amelia",
+				handle: "amelia",
+			}),
+			externalUserId: "88",
+		});
+		await expect(resolveProfile("groupdm")).resolves.toMatchObject({
+			profile: expect.objectContaining({
+				id: "profile_group_1",
+				handle: "groupdm",
+			}),
+			externalUserId: null,
+		});
+	});
+
+	it("returns authenticated ids safely", async () => {
+		makeTempHome();
+		mocks.lookupAuthenticatedUser
+			.mockResolvedValueOnce({ id: "1" })
+			.mockResolvedValueOnce({ id: "" })
+			.mockRejectedValueOnce(new Error("auth down"));
+		const { getAuthenticatedUserId } = await import("./moderation-target");
+
+		await expect(getAuthenticatedUserId()).resolves.toBe("1");
+		await expect(getAuthenticatedUserId()).resolves.toBeNull();
+		await expect(getAuthenticatedUserId()).resolves.toBeNull();
+	});
+});
