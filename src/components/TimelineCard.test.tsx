@@ -97,7 +97,9 @@ const item = {
 describe("TimelineCard", () => {
 	it("renders tweet metadata and replies", () => {
 		const onReply = vi.fn();
-		const { container } = render(<TimelineCard item={item} onReply={onReply} />);
+		const { container } = render(
+			<TimelineCard item={item} onReply={onReply} />,
+		);
 
 		expect(screen.getByText(/Ship with/)).toBeInTheDocument();
 		expect(screen.getAllByText("@sam")[0]).toBeInTheDocument();
