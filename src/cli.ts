@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { Command } from "commander";
 import { findArchives } from "#/lib/archive-finder";
 import { importArchive } from "#/lib/archive-import";
+import { importBlocklist } from "#/lib/blocklist";
 import { addBlock, listBlocks, removeBlock } from "#/lib/blocks";
 import { ensureBirdclawDirs, getBirdclawPaths } from "#/lib/config";
 import { listInboxItems, scoreInbox } from "#/lib/inbox";
@@ -294,6 +295,15 @@ blocksCommand
 	.option("--account <accountId>", "Account id", "acct_primary")
 	.action(async (query, options) => {
 		const result = await removeBlock(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+blocksCommand
+	.command("import <path>")
+	.description("Import a newline-delimited blocklist file")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (filePath, options) => {
+		const result = await importBlocklist(options.account, filePath);
 		print(result, program.opts().json ?? false);
 	});
 

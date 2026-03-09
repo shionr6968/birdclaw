@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 - Start a project changelog.
 - Add X web cookie fallback for block and unblock actions when the X API rejects OAuth2 block writes.
 - Add `profiles replies` so moderation triage can inspect a user's recent reply pattern before blocking.
+- Add `blocks import <path>` for one-shot blocklist application from a file.
 
 ### Fixed
 
@@ -19,3 +20,4 @@ All notable changes to this project will be documented in this file.
 
 - Document block transport behavior and fallback path in the CLI/docs.
 - Document the reply-pattern inspection flow for borderline AI/slop accounts.
+- Document blocklist import file format and usage.

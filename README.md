@@ -204,6 +204,7 @@ pnpm cli inbox --score --hide-low-signal --limit 8 --json
 
 ```bash
 pnpm cli blocks list --account acct_primary --json
+pnpm cli blocks import ~/triage/blocklist.txt --account acct_primary --json
 pnpm cli blocks add @amelia --account acct_primary --json
 pnpm cli blocks remove @amelia --account acct_primary --json
 pnpm cli ban @amelia --account acct_primary --json
@@ -214,6 +215,7 @@ Notes:
 
 - block/unblock tries `xurl` first
 - if X rejects `xurl` OAuth2 block writes, birdclaw falls back to the X web cookie session (`auth_token` + `ct0`) when available
+- `blocks import` accepts newline-delimited blocklists with comments and markdown bullets
 
 ### Profile reply scan
 

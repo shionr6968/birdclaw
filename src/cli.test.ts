@@ -6,6 +6,7 @@ const getBirdclawPathsMock = vi.fn();
 const getQueryEnvelopeMock = vi.fn();
 const findArchivesMock = vi.fn();
 const importArchiveMock = vi.fn();
+const importBlocklistMock = vi.fn();
 const addBlockMock = vi.fn();
 const exportMentionItemsMock = vi.fn();
 const exportMentionsViaCachedXurlMock = vi.fn();
@@ -47,6 +48,10 @@ vi.mock("#/lib/archive-finder", () => ({
 
 vi.mock("#/lib/archive-import", () => ({
 	importArchive: (...args: unknown[]) => importArchiveMock(...args),
+}));
+
+vi.mock("#/lib/blocklist", () => ({
+	importBlocklist: (...args: unknown[]) => importBlocklistMock(...args),
 }));
 
 vi.mock("#/lib/blocks", () => ({
@@ -112,6 +117,7 @@ describe("cli", () => {
 		getQueryEnvelopeMock.mockReset();
 		findArchivesMock.mockReset();
 		importArchiveMock.mockReset();
+		importBlocklistMock.mockReset();
 		addBlockMock.mockReset();
 		exportMentionItemsMock.mockReset();
 		exportMentionsViaCachedXurlMock.mockReset();
@@ -152,6 +158,15 @@ describe("cli", () => {
 		importArchiveMock.mockResolvedValue({
 			ok: true,
 			archivePath: "/tmp/twitter.zip",
+		});
+		importBlocklistMock.mockResolvedValue({
+			ok: true,
+			accountId: "acct_primary",
+			path: "/tmp/blocklist.txt",
+			requestedCount: 2,
+			blockedCount: 2,
+			failedCount: 0,
+			items: [],
 		});
 		addBlockMock.mockResolvedValue({ ok: true, action: "block" });
 		exportMentionItemsMock.mockReturnValue([
@@ -448,6 +463,15 @@ describe("cli", () => {
 			"node",
 			"birdclaw",
 			"blocks",
+			"import",
+			"/tmp/blocklist.txt",
+			"--account",
+			"acct_studio",
+		]);
+		await runCli([
+			"node",
+			"birdclaw",
+			"blocks",
 			"add",
 			"@sam",
 			"--account",
@@ -468,6 +492,10 @@ describe("cli", () => {
 			search: "sam",
 			limit: 50,
 		});
+		expect(importBlocklistMock).toHaveBeenCalledWith(
+			"acct_studio",
+			"/tmp/blocklist.txt",
+		);
 		expect(addBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(removeBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 	});

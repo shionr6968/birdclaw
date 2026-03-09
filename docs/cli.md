@@ -270,6 +270,17 @@ Flags:
 Flags:
 - `--account <account-id>`
 
+### `blocks import <path>`
+
+- import a blocklist file in one call
+- reads newline-delimited handles, ids, or X URLs
+- ignores blank lines and `#` comments
+- tolerates markdown bullets like `- @handle`
+- returns per-entry success/failure in `--json`
+
+Flags:
+- `--account <account-id>`
+
 ### `blocks remove <handle-or-id>`
 
 - remove a local block entry for one account
