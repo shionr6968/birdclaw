@@ -51,15 +51,16 @@ function BlocksRoute() {
 
 	useEffect(() => {
 		const controller = new AbortController();
-		const url = new URL("/api/blocks", window.location.origin);
-		url.searchParams.set("account", accountId);
-		url.searchParams.set("limit", "12");
-		url.searchParams.set("refresh", String(refreshTick));
+		const params = new URLSearchParams({
+			account: accountId,
+			limit: "12",
+			refresh: String(refreshTick),
+		});
 		if (search.trim()) {
-			url.searchParams.set("search", search.trim());
+			params.set("search", search.trim());
 		}
 
-		fetch(url, { signal: controller.signal })
+		fetch(`/api/blocks?${params.toString()}`, { signal: controller.signal })
 			.then((response) => response.json())
 			.then((data: BlockListResponse) => {
 				setItems(data.items);
