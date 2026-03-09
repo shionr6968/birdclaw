@@ -69,6 +69,7 @@ birdclaw sync followers
 birdclaw sync following
 birdclaw search tweets <query>
 birdclaw search dms <query>
+birdclaw mentions export [query]
 birdclaw dms list
 birdclaw blocks list
 birdclaw blocks add <handle-or-id>
@@ -161,6 +162,23 @@ Flags:
 - `--unreplied`
 - `--since <date>`
 - `--until <date>`
+- `--limit <n>`
+
+### `mentions export [query]`
+
+- export local mention tweets for scripts and agents
+- always emits JSON
+- each item includes:
+  - raw `text`
+  - rendered `plainText`
+  - rendered `markdown`
+  - canonical tweet URL
+  - author and reply-state metadata
+
+Flags:
+- `--account <account-id>`
+- `--replied`
+- `--unreplied`
 - `--limit <n>`
 
 ### `dms list`

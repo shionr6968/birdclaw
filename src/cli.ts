@@ -8,6 +8,7 @@ import { importArchive } from "#/lib/archive-import";
 import { addBlock, listBlocks, removeBlock } from "#/lib/blocks";
 import { ensureBirdclawDirs, getBirdclawPaths } from "#/lib/config";
 import { listInboxItems, scoreInbox } from "#/lib/inbox";
+import { exportMentionItems } from "#/lib/mentions-export";
 import { hydrateProfilesFromX } from "#/lib/profile-hydration";
 import {
 	createDmReply,
@@ -161,6 +162,32 @@ searchCommand
 			limit: Number(options.limit),
 		});
 		print(items, program.opts().json ?? false);
+	});
+
+const mentionsCommand = program
+	.command("mentions")
+	.description("Export local mention tweets for scripts and agents");
+
+mentionsCommand
+	.command("export [query]")
+	.description("Return mention tweets with plain-text and markdown renderings")
+	.option("--account <accountId>", "Account id")
+	.option("--replied", "Only replied items")
+	.option("--unreplied", "Only unreplied items")
+	.option("--limit <n>", "Limit results", "20")
+	.action((query, options) => {
+		const replyFilter = options.replied
+			? "replied"
+			: options.unreplied
+				? "unreplied"
+				: "all";
+		const items = exportMentionItems({
+			account: options.account,
+			search: query,
+			replyFilter,
+			limit: Number(options.limit),
+		});
+		print({ resource: "mentions", count: items.length, items }, true);
 	});
 
 program

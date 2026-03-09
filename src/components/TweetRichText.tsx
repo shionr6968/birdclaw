@@ -1,10 +1,6 @@
 import { Fragment } from "react";
-import type {
-	TweetEntities,
-	TweetHashtagEntity,
-	TweetMentionEntity,
-	TweetUrlEntity,
-} from "#/lib/types";
+import { collectTweetSegments } from "#/lib/tweet-render";
+import type { TweetEntities } from "#/lib/types";
 import {
 	bodyCopyClass,
 	tweetHashtagClass,
@@ -12,26 +8,6 @@ import {
 	tweetMentionClass,
 } from "#/lib/ui";
 import { ProfilePreview } from "./ProfilePreview";
-
-type Segment =
-	| ({ kind: "mention" } & TweetMentionEntity)
-	| ({ kind: "url" } & TweetUrlEntity)
-	| ({ kind: "hashtag" } & TweetHashtagEntity);
-
-function collectSegments(entities: TweetEntities): Segment[] {
-	return [
-		...(entities.mentions?.map((entry) => ({
-			...entry,
-			kind: "mention" as const,
-		})) ?? []),
-		...(entities.urls?.map((entry) => ({ ...entry, kind: "url" as const })) ??
-			[]),
-		...(entities.hashtags?.map((entry) => ({
-			...entry,
-			kind: "hashtag" as const,
-		})) ?? []),
-	].sort((left, right) => left.start - right.start);
-}
 
 export function TweetRichText({
 	text,
@@ -42,7 +18,7 @@ export function TweetRichText({
 	entities: TweetEntities;
 	className?: string;
 }) {
-	const segments = collectSegments(entities);
+	const segments = collectTweetSegments(entities);
 	let cursor = 0;
 
 	return (

@@ -7,6 +7,7 @@ const getQueryEnvelopeMock = vi.fn();
 const findArchivesMock = vi.fn();
 const importArchiveMock = vi.fn();
 const addBlockMock = vi.fn();
+const exportMentionItemsMock = vi.fn();
 const listBlocksMock = vi.fn();
 const listInboxItemsMock = vi.fn();
 const scoreInboxMock = vi.fn();
@@ -54,6 +55,10 @@ vi.mock("#/lib/inbox", () => ({
 	scoreInbox: (...args: unknown[]) => scoreInboxMock(...args),
 }));
 
+vi.mock("#/lib/mentions-export", () => ({
+	exportMentionItems: (...args: unknown[]) => exportMentionItemsMock(...args),
+}));
+
 vi.mock("#/lib/profile-hydration", () => ({
 	hydrateProfilesFromX: (...args: unknown[]) =>
 		hydrateProfilesFromXMock(...args),
@@ -87,6 +92,7 @@ describe("cli", () => {
 		findArchivesMock.mockReset();
 		importArchiveMock.mockReset();
 		addBlockMock.mockReset();
+		exportMentionItemsMock.mockReset();
 		listBlocksMock.mockReset();
 		listInboxItemsMock.mockReset();
 		scoreInboxMock.mockReset();
@@ -122,6 +128,13 @@ describe("cli", () => {
 			archivePath: "/tmp/twitter.zip",
 		});
 		addBlockMock.mockResolvedValue({ ok: true, action: "block" });
+		exportMentionItemsMock.mockReturnValue([
+			{
+				id: "tweet_mention_1",
+				plainText: "plain",
+				markdown: "markdown",
+			},
+		]);
 		listBlocksMock.mockReturnValue([{ accountId: "acct_primary" }]);
 		listInboxItemsMock.mockReturnValue([{ id: "dm:1" }]);
 		scoreInboxMock.mockResolvedValue({ ok: true });
@@ -417,6 +430,37 @@ describe("cli", () => {
 		});
 		expect(addBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(removeBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
+	});
+
+	it("exports mentions as json with rendered text fields", async () => {
+		const { runCli } = await loadCli();
+
+		await runCli([
+			"node",
+			"birdclaw",
+			"mentions",
+			"export",
+			"sam",
+			"--unreplied",
+			"--limit",
+			"4",
+		]);
+
+		expect(exportMentionItemsMock).toHaveBeenCalledWith({
+			account: undefined,
+			search: "sam",
+			replyFilter: "unreplied",
+			limit: 4,
+		});
+		expect(consoleLogMock).toHaveBeenCalledWith(
+			expect.stringContaining('"resource": "mentions"'),
+		);
+		expect(consoleLogMock).toHaveBeenCalledWith(
+			expect.stringContaining('"plainText": "plain"'),
+		);
+		expect(consoleLogMock).toHaveBeenCalledWith(
+			expect.stringContaining('"markdown": "markdown"'),
+		);
 	});
 
 	it("dispatches compose and inbox commands", async () => {

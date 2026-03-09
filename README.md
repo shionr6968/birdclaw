@@ -189,7 +189,10 @@ pnpm cli db stats --json
 ```bash
 pnpm cli search tweets "local-first" --json
 pnpm cli search tweets "sync engine" --limit 20 --json
+pnpm cli mentions export "agent" --unreplied --limit 10
 ```
+
+`mentions export` always emits JSON with both `plainText` and `markdown` fields per tweet, so agents can ingest mention queues without parsing rich entities.
 
 ### Search DMs
 
