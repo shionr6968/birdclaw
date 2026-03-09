@@ -209,7 +209,7 @@ export const contextStatTermClass = "text-[0.84rem] text-[var(--ink-soft)]";
 export const contextStatValueClass = "mt-1.5 font-semibold";
 
 export const avatarChipClass =
-	"avatar-chip inline-grid size-[42px] place-items-center rounded-2xl font-bold text-white";
+	"avatar-chip inline-grid size-[42px] place-items-center overflow-hidden rounded-2xl font-bold text-white";
 
 export const avatarChipLargeClass =
 	"avatar-chip-large mb-3.5 size-16 rounded-[20px]";

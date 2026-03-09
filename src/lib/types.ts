@@ -19,6 +19,7 @@ export interface ProfileRecord {
 	bio: string;
 	followersCount: number;
 	avatarHue: number;
+	avatarUrl?: string;
 	createdAt: string;
 }
 

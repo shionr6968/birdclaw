@@ -267,8 +267,10 @@ function BlocksRoute() {
 							<div className={cardHeaderClass}>
 								<div className={identityBlockClass}>
 									<AvatarChip
+										avatarUrl={match.profile.avatarUrl}
 										hue={match.profile.avatarHue}
 										name={match.profile.displayName}
+										profileId={match.profile.id}
 									/>
 									<div>
 										<strong>{match.profile.displayName}</strong>
@@ -310,8 +312,10 @@ function BlocksRoute() {
 						<div className={cardHeaderClass}>
 							<div className={identityBlockClass}>
 								<AvatarChip
+									avatarUrl={item.profile.avatarUrl}
 									hue={item.profile.avatarHue}
 									name={item.profile.displayName}
+									profileId={item.profile.id}
 								/>
 								<div>
 									<strong>{item.profile.displayName}</strong>

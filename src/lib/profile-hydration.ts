@@ -1,3 +1,4 @@
+import { normalizeAvatarUrl } from "./avatar-cache";
 import { getNativeDb } from "./db";
 import {
 	getTransportStatus,
@@ -50,6 +51,7 @@ export async function hydrateProfilesFromX() {
         display_name = ?,
         bio = ?,
         followers_count = ?,
+        avatar_url = coalesce(?, avatar_url),
         created_at = coalesce(?, created_at)
     where id = ?
   `);
@@ -64,6 +66,7 @@ export async function hydrateProfilesFromX() {
         display_name = ?,
         bio = ?,
         followers_count = ?,
+        avatar_url = coalesce(?, avatar_url),
         created_at = coalesce(?, created_at)
     where id = 'profile_me'
   `);
@@ -94,6 +97,7 @@ export async function hydrateProfilesFromX() {
 					displayName || username || profileId,
 					String(user.description ?? ""),
 					toInt(metrics?.followers_count),
+					normalizeAvatarUrl(user.profile_image_url),
 					typeof user.created_at === "string" ? user.created_at : null,
 					profileId,
 				);
@@ -116,6 +120,7 @@ export async function hydrateProfilesFromX() {
 				String(me.name ?? "Peter Steinberger"),
 				String(me.description ?? ""),
 				toInt(metrics?.followers_count),
+				normalizeAvatarUrl(me.profile_image_url),
 				typeof me.created_at === "string" ? me.created_at : null,
 			);
 			updateAccount.run(

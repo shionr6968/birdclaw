@@ -18,6 +18,7 @@ import { Route as ApiStatusRouteImport } from './routes/api/status'
 import { Route as ApiQueryRouteImport } from './routes/api/query'
 import { Route as ApiInboxRouteImport } from './routes/api/inbox'
 import { Route as ApiBlocksRouteImport } from './routes/api/blocks'
+import { Route as ApiAvatarRouteImport } from './routes/api/avatar'
 import { Route as ApiActionRouteImport } from './routes/api/action'
 
 const MentionsRoute = MentionsRouteImport.update({
@@ -65,6 +66,11 @@ const ApiBlocksRoute = ApiBlocksRouteImport.update({
   path: '/api/blocks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAvatarRoute = ApiAvatarRouteImport.update({
+  id: '/api/avatar',
+  path: '/api/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiActionRoute = ApiActionRouteImport.update({
   id: '/api/action',
   path: '/api/action',
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/inbox': typeof InboxRoute
   '/mentions': typeof MentionsRoute
   '/api/action': typeof ApiActionRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/blocks': typeof ApiBlocksRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/query': typeof ApiQueryRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof InboxRoute
   '/mentions': typeof MentionsRoute
   '/api/action': typeof ApiActionRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/blocks': typeof ApiBlocksRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/query': typeof ApiQueryRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/inbox': typeof InboxRoute
   '/mentions': typeof MentionsRoute
   '/api/action': typeof ApiActionRoute
+  '/api/avatar': typeof ApiAvatarRoute
   '/api/blocks': typeof ApiBlocksRoute
   '/api/inbox': typeof ApiInboxRoute
   '/api/query': typeof ApiQueryRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/mentions'
     | '/api/action'
+    | '/api/avatar'
     | '/api/blocks'
     | '/api/inbox'
     | '/api/query'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/mentions'
     | '/api/action'
+    | '/api/avatar'
     | '/api/blocks'
     | '/api/inbox'
     | '/api/query'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/inbox'
     | '/mentions'
     | '/api/action'
+    | '/api/avatar'
     | '/api/blocks'
     | '/api/inbox'
     | '/api/query'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   InboxRoute: typeof InboxRoute
   MentionsRoute: typeof MentionsRoute
   ApiActionRoute: typeof ApiActionRoute
+  ApiAvatarRoute: typeof ApiAvatarRoute
   ApiBlocksRoute: typeof ApiBlocksRoute
   ApiInboxRoute: typeof ApiInboxRoute
   ApiQueryRoute: typeof ApiQueryRoute
@@ -225,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBlocksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/avatar': {
+      id: '/api/avatar'
+      path: '/api/avatar'
+      fullPath: '/api/avatar'
+      preLoaderRoute: typeof ApiAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/action': {
       id: '/api/action'
       path: '/api/action'
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   InboxRoute: InboxRoute,
   MentionsRoute: MentionsRoute,
   ApiActionRoute: ApiActionRoute,
+  ApiAvatarRoute: ApiAvatarRoute,
   ApiBlocksRoute: ApiBlocksRoute,
   ApiInboxRoute: ApiInboxRoute,
   ApiQueryRoute: ApiQueryRoute,

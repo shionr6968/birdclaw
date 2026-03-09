@@ -15,6 +15,13 @@ function svgImageDataUrl(label: string, hue: number) {
 	return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
+function svgAvatarDataUrl(label: string, hue: number) {
+	const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160"><rect width="160" height="160" rx="42" fill="hsl(${String(
+		hue,
+	)} 54% 44%)"/><circle cx="80" cy="62" r="28" fill="rgba(255,255,255,0.22)"/><path d="M34 138c9-28 31-42 46-42s37 14 46 42" fill="rgba(255,255,255,0.22)"/><text x="80" y="98" text-anchor="middle" fill="white" font-family="Instrument Sans, sans-serif" font-size="44" font-weight="700">${label}</text></svg>`;
+	return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 export function seedDemoData(db: Database.Database) {
 	const accountCount = db
 		.prepare("select count(*) as count from accounts")
@@ -30,8 +37,8 @@ export function seedDemoData(db: Database.Database) {
   `);
 
 	const insertProfile = db.prepare(`
-    insert into profiles (id, handle, display_name, bio, followers_count, avatar_hue, created_at)
-    values (@id, @handle, @displayName, @bio, @followersCount, @avatarHue, @createdAt)
+    insert into profiles (id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at)
+    values (@id, @handle, @displayName, @bio, @followersCount, @avatarHue, @avatarUrl, @createdAt)
   `);
 
 	const insertTweet = db.prepare(`
@@ -94,6 +101,7 @@ export function seedDemoData(db: Database.Database) {
 			bio: "Builds native software, tooling, and sharp little systems.",
 			followersCount: 21450,
 			avatarHue: 18,
+			avatarUrl: svgAvatarDataUrl("PS", 18),
 			createdAt: now.toISOString(),
 		},
 		{
@@ -103,6 +111,7 @@ export function seedDemoData(db: Database.Database) {
 			bio: "Working on AGI, energy, chips, and shipping the hard parts.",
 			followersCount: 3180000,
 			avatarHue: 210,
+			avatarUrl: svgAvatarDataUrl("SA", 210),
 			createdAt: now.toISOString(),
 		},
 		{
@@ -112,6 +121,7 @@ export function seedDemoData(db: Database.Database) {
 			bio: "Intercom co-founder. Product, writing, and oddly specific opinions.",
 			followersCount: 178000,
 			avatarHue: 144,
+			avatarUrl: svgAvatarDataUrl("DT", 144),
 			createdAt: now.toISOString(),
 		},
 		{
@@ -121,6 +131,7 @@ export function seedDemoData(db: Database.Database) {
 			bio: "Design systems, prototypes, and good typography over noise.",
 			followersCount: 4200,
 			avatarHue: 320,
+			avatarUrl: svgAvatarDataUrl("AN", 320),
 			createdAt: now.toISOString(),
 		},
 		{
@@ -130,6 +141,7 @@ export function seedDemoData(db: Database.Database) {
 			bio: "Reports on infrastructure, AI policy, and the business of software.",
 			followersCount: 632000,
 			avatarHue: 262,
+			avatarUrl: svgAvatarDataUrl("AW", 262),
 			createdAt: now.toISOString(),
 		},
 		{
@@ -139,6 +151,7 @@ export function seedDemoData(db: Database.Database) {
 			bio: "Bootstrapped indie apps. Pragmatic, fast, allergic to dashboards.",
 			followersCount: 12600,
 			avatarHue: 74,
+			avatarUrl: svgAvatarDataUrl("NB", 74),
 			createdAt: now.toISOString(),
 		},
 	];

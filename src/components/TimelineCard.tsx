@@ -44,8 +44,10 @@ export function TimelineCard({
 			<header className={cardHeaderClass}>
 				<div className={identityBlockClass}>
 					<AvatarChip
+						avatarUrl={item.author.avatarUrl}
 						hue={item.author.avatarHue}
 						name={item.author.displayName}
+						profileId={item.author.id}
 					/>
 					<div>
 						<ProfilePreview profile={item.author}>

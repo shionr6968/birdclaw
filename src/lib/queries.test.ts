@@ -94,6 +94,9 @@ describe("birdclaw queries", () => {
 
 		expect(unreplied.map((item) => item.id)).toEqual(["dm_001", "dm_003"]);
 		expect(unreplied[0]?.participant.bio).toContain("AGI");
+		expect(unreplied[0]?.participant.avatarUrl).toMatch(
+			/^data:image\/svg\+xml/,
+		);
 	});
 
 	it("filters DM conversations by derived influence score", () => {
@@ -180,6 +183,7 @@ describe("birdclaw queries", () => {
 		);
 		expect(quotedItem?.quotedTweet?.id).toBe("tweet_001");
 		expect(quotedItem?.quotedTweet?.text).toContain("local-first");
+		expect(quotedItem?.author.avatarUrl).toMatch(/^data:image\/svg\+xml/);
 	});
 
 	it("builds a mixed inbox with ranked mentions and dms", () => {

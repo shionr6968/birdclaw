@@ -19,6 +19,7 @@ export interface ProfilesTable {
 	bio: string;
 	followers_count: number;
 	avatar_hue: number;
+	avatar_url: string | null;
 	created_at: string;
 }
 
@@ -121,6 +122,7 @@ const BASE_SCHEMA_SQL = `
     bio text not null,
     followers_count integer not null default 0,
     avatar_hue integer not null default 0,
+    avatar_url text,
     created_at text not null
   );
 
@@ -240,6 +242,13 @@ function ensureTweetMetadataColumns(db: BetterSqlite3.Database) {
 	}
 }
 
+function ensureProfileAvatarColumns(db: BetterSqlite3.Database) {
+	const columnNames = getColumnNames(db, "profiles");
+	if (!columnNames.has("avatar_url")) {
+		db.exec("alter table profiles add column avatar_url text");
+	}
+}
+
 function ensureSchemaIndexes(db: BetterSqlite3.Database) {
 	db.exec(INDEX_SQL);
 }
@@ -252,6 +261,7 @@ function initDatabase() {
 		nativeDb = new BetterSqlite3(dbPath);
 		nativeDb.exec(BASE_SCHEMA_SQL);
 		ensureTweetMetadataColumns(nativeDb);
+		ensureProfileAvatarColumns(nativeDb);
 		ensureSchemaIndexes(nativeDb);
 		seedDemoData(nativeDb);
 	}

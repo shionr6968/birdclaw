@@ -610,8 +610,8 @@ export async function importArchive(
     values (?, ?, ?, ?, 1, ?)
   `);
 	const insertProfile = db.prepare(`
-    insert into profiles (id, handle, display_name, bio, followers_count, avatar_hue, created_at)
-    values (?, ?, ?, ?, ?, ?, ?)
+    insert into profiles (id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at)
+    values (?, ?, ?, ?, ?, ?, ?, ?)
   `);
 	const insertTweet = db.prepare(`
     insert into tweets (
@@ -653,6 +653,7 @@ export async function importArchive(
 				profile.bio,
 				profile.followersCount,
 				profile.avatarHue,
+				null,
 				profile.createdAt,
 			);
 		}

@@ -67,6 +67,8 @@ describe("blocklist", () => {
 				username: "amelia",
 				name: "Amelia N",
 				description: "Design systems",
+				profile_image_url:
+					"https://pbs.twimg.com/profile_images/7/avatar_normal.jpg",
 				public_metrics: { followers_count: 4200 },
 			},
 		]);
@@ -76,6 +78,8 @@ describe("blocklist", () => {
 				username: "avawires",
 				name: "Ava Wires",
 				description: "Infra reporter",
+				profile_image_url:
+					"https://pbs.twimg.com/profile_images/8/avatar_bigger.jpg",
 				public_metrics: { followers_count: 632000 },
 			},
 		]);
@@ -94,6 +98,9 @@ describe("blocklist", () => {
 		const listed = listBlocks({ account: "acct_primary" });
 		expect(listed).toHaveLength(1);
 		expect(listed[0]?.profile.handle).toBe("amelia");
+		expect(listed[0]?.profile.avatarUrl).toBe(
+			"https://pbs.twimg.com/profile_images/7/avatar.jpg",
+		);
 
 		const response = getBlocksResponse({
 			accountId: "acct_primary",
@@ -208,6 +215,8 @@ describe("blocklist", () => {
 						username: "avawires",
 						name: "Ava Wires",
 						description: "Infra reporter",
+						profile_image_url:
+							"https://pbs.twimg.com/profile_images/8/avatar_bigger.jpg",
 						public_metrics: { followers_count: 632000 },
 					},
 				],
@@ -220,6 +229,8 @@ describe("blocklist", () => {
 						username: "fortune",
 						name: "Fortune",
 						description: "source: trust me bro",
+						profile_image_url:
+							"https://pbs.twimg.com/profile_images/9/avatar_mini.jpg",
 						public_metrics: { followers_count: 9 },
 					},
 				],
@@ -289,6 +300,8 @@ describe("blocklist", () => {
 						username: "avawires",
 						name: "Ava Wires",
 						description: "Infra reporter",
+						profile_image_url:
+							"https://pbs.twimg.com/profile_images/8/avatar_bigger.jpg",
 						public_metrics: { followers_count: 632000 },
 					},
 				],

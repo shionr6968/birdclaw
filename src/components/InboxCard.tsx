@@ -49,8 +49,10 @@ export function InboxCard({
 			<div className={cardHeaderClass}>
 				<div className={identityBlockClass}>
 					<AvatarChip
+						avatarUrl={item.participant.avatarUrl}
 						hue={item.participant.avatarHue}
 						name={item.participant.displayName}
+						profileId={item.participant.id}
 					/>
 					<div>
 						<div className={identityRowClass}>

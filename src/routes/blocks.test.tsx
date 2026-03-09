@@ -1,6 +1,12 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+	cleanup,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import type { ComponentType } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Route } from "./blocks";
 
@@ -9,6 +15,11 @@ const BlocksRoute = Route.options.component as ComponentType;
 describe("blocks route", () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.unstubAllGlobals();
 	});
 
 	it("loads blocks and submits block/unblock actions", async () => {
@@ -178,5 +189,82 @@ describe("blocks route", () => {
 				}),
 			);
 		});
+	});
+
+	it("shows blocklist fetch failures", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				if (url.endsWith("/api/status")) {
+					return new Response(
+						JSON.stringify({
+							stats: { home: 3, mentions: 1, dms: 4, needsReply: 2, inbox: 3 },
+							transport: { statusText: "xurl available" },
+							accounts: [
+								{ id: "acct_primary", handle: "@steipete", name: "Peter" },
+							],
+							archives: [],
+						}),
+					);
+				}
+				if (url.includes("/api/blocks")) {
+					throw new Error("blocks down");
+				}
+				if (url.endsWith("/api/action") && init?.method === "POST") {
+					return new Response(
+						JSON.stringify({
+							ok: true,
+							transport: {
+								ok: true,
+								output: "remote block sync disabled in test mode",
+							},
+						}),
+					);
+				}
+				throw new Error(`Unexpected fetch ${url}`);
+			}),
+		);
+
+		render(<BlocksRoute />);
+
+		expect(await screen.findByText("blocks down")).toBeInTheDocument();
+	});
+
+	it("shows sync failures", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				const url = String(input);
+				if (url.endsWith("/api/status")) {
+					return new Response(
+						JSON.stringify({
+							stats: { home: 3, mentions: 1, dms: 4, needsReply: 2, inbox: 3 },
+							transport: { statusText: "xurl available" },
+							accounts: [
+								{ id: "acct_primary", handle: "@steipete", name: "Peter" },
+							],
+							archives: [],
+						}),
+					);
+				}
+				if (url.includes("/api/blocks")) {
+					return new Response(JSON.stringify({ items: [], matches: [] }));
+				}
+				if (url.endsWith("/api/action") && init?.method === "POST") {
+					return new Response(
+						JSON.stringify({
+							ok: false,
+							transport: { ok: false, output: "sync nope" },
+						}),
+					);
+				}
+				throw new Error(`Unexpected fetch ${url}`);
+			}),
+		);
+
+		render(<BlocksRoute />);
+
+		expect(await screen.findByText("sync nope")).toBeInTheDocument();
 	});
 });

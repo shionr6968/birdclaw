@@ -72,6 +72,18 @@ describe("xurl transport wrapper", () => {
 		expect(result.statusText).toContain("auth unavailable");
 	});
 
+	it("uses an unknown-error fallback for non-Error auth failures", async () => {
+		execFileAsyncMock
+			.mockResolvedValueOnce({ stdout: "xurl 1.0", stderr: "" })
+			.mockRejectedValueOnce("bad auth");
+		const { getTransportStatus } = await import("./xurl");
+
+		const result = await getTransportStatus();
+
+		expect(result.availableTransport).toBe("local");
+		expect(result.statusText).toContain("unknown error");
+	});
+
 	it("looks up users and the authenticated account via raw json endpoints", async () => {
 		execFileAsyncMock
 			.mockResolvedValueOnce({
@@ -95,6 +107,16 @@ describe("xurl transport wrapper", () => {
 		});
 	});
 
+	it("returns an empty user list when lookup payload data is not an array", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({
+			stdout: JSON.stringify({ data: { id: "42" } }),
+			stderr: "",
+		});
+		const { lookupUsersByIds } = await import("./xurl");
+
+		await expect(lookupUsersByIds(["42"])).resolves.toEqual([]);
+	});
+
 	it("looks up users by handle", async () => {
 		execFileAsyncMock.mockResolvedValueOnce({
 			stdout: JSON.stringify({ data: [{ id: "7", username: "amelia" }] }),
@@ -105,6 +127,16 @@ describe("xurl transport wrapper", () => {
 		await expect(lookupUsersByHandles(["@amelia"])).resolves.toEqual([
 			{ id: "7", username: "amelia" },
 		]);
+	});
+
+	it("returns null when whoami payload is not an object", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({
+			stdout: JSON.stringify({ data: "not-an-object" }),
+			stderr: "",
+		});
+		const { lookupAuthenticatedUser } = await import("./xurl");
+
+		await expect(lookupAuthenticatedUser()).resolves.toBeNull();
 	});
 
 	it("lists blocked users and returns the next page token", async () => {
@@ -122,7 +154,23 @@ describe("xurl transport wrapper", () => {
 			nextToken: "next",
 		});
 		expect(execFileAsyncMock).toHaveBeenCalledWith("xurl", [
-			"/2/users/1/blocking?max_results=100&user.fields=description%2Cpublic_metrics%2Ccreated_at",
+			"/2/users/1/blocking?max_results=100&user.fields=description%2Cpublic_metrics%2Cprofile_image_url%2Ccreated_at",
+		]);
+	});
+
+	it("passes pagination tokens and tolerates empty block payloads", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({
+			stdout: JSON.stringify({ data: null, meta: null }),
+			stderr: "",
+		});
+		const { listBlockedUsers } = await import("./xurl");
+
+		await expect(listBlockedUsers("1", "next-page")).resolves.toEqual({
+			items: [],
+			nextToken: null,
+		});
+		expect(execFileAsyncMock).toHaveBeenCalledWith("xurl", [
+			"/2/users/1/blocking?max_results=100&user.fields=description%2Cpublic_metrics%2Cprofile_image_url%2Ccreated_at&pagination_token=next-page",
 		]);
 	});
 
@@ -148,6 +196,14 @@ describe("xurl transport wrapper", () => {
 			nextToken: null,
 		});
 		expect(execFileAsyncMock).toHaveBeenCalledTimes(2);
+	});
+
+	it("does not retry non-rate-limited json failures", async () => {
+		execFileAsyncMock.mockRejectedValueOnce(new Error("bad json"));
+		const { lookupUsersByIds } = await import("./xurl");
+
+		await expect(lookupUsersByIds(["42"])).rejects.toThrow("bad json");
+		expect(execFileAsyncMock).toHaveBeenCalledTimes(1);
 	});
 
 	it("returns an empty handle list when asked to resolve nothing", async () => {
@@ -273,6 +329,16 @@ describe("xurl transport wrapper", () => {
 		await expect(unblockUserViaXurl("1", "2")).resolves.toEqual({
 			ok: false,
 			output: "transport down",
+		});
+	});
+
+	it("uses ok as the default mutation output", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({ stdout: "", stderr: "" });
+		const { blockUserViaXurl } = await import("./xurl");
+
+		await expect(blockUserViaXurl("1", "2")).resolves.toEqual({
+			ok: true,
+			output: "ok",
 		});
 	});
 });

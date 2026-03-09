@@ -34,7 +34,12 @@ export function ProfilePreview({
 			</a>
 			<span className={profilePreviewCardClass}>
 				<span className={profilePreviewHeaderClass}>
-					<AvatarChip hue={profile.avatarHue} name={profile.displayName} />
+					<AvatarChip
+						avatarUrl={profile.avatarUrl}
+						hue={profile.avatarHue}
+						name={profile.displayName}
+						profileId={profile.id}
+					/>
 					<span>
 						<strong>{profile.displayName}</strong>
 						<span className={profilePreviewHandleClass}>@{profile.handle}</span>

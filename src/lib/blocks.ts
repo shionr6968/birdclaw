@@ -1,4 +1,5 @@
 import type Database from "better-sqlite3";
+import { normalizeAvatarUrl } from "./avatar-cache";
 import { getNativeDb } from "./db";
 import type {
 	BlockItem,
@@ -32,6 +33,8 @@ function toProfile(row: Record<string, unknown>): ProfileRecord {
 		bio: String(row.bio),
 		followersCount: Number(row.followers_count),
 		avatarHue: Number(row.avatar_hue),
+		avatarUrl:
+			typeof row.avatar_url === "string" ? String(row.avatar_url) : undefined,
 		createdAt: String(row.created_at),
 	};
 }
@@ -105,6 +108,7 @@ function upsertProfileFromUser(
 			: null;
 	const followersCount = Number(metrics?.followers_count ?? 0);
 	const bio = String(user.description ?? "");
+	const avatarUrl = normalizeAvatarUrl(user.profile_image_url);
 	const createdAt = new Date().toISOString();
 
 	const existingRow = db
@@ -125,13 +129,14 @@ function upsertProfileFromUser(
 	db.prepare(
 		`
     insert into profiles (
-      id, handle, display_name, bio, followers_count, avatar_hue, created_at
-    ) values (?, ?, ?, ?, ?, ?, ?)
+      id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?)
     on conflict(id) do update set
       handle = excluded.handle,
       display_name = excluded.display_name,
       bio = excluded.bio,
-      followers_count = excluded.followers_count
+      followers_count = excluded.followers_count,
+      avatar_url = coalesce(excluded.avatar_url, profiles.avatar_url)
     `,
 	).run(
 		profileId,
@@ -140,6 +145,7 @@ function upsertProfileFromUser(
 		bio,
 		followersCount,
 		randomAvatarHue(username),
+		avatarUrl,
 		createdAt,
 	);
 
@@ -151,6 +157,7 @@ function upsertProfileFromUser(
 			bio,
 			followersCount,
 			avatarHue: randomAvatarHue(username),
+			avatarUrl: avatarUrl ?? undefined,
 			createdAt,
 		},
 		externalUserId: id,
@@ -170,6 +177,7 @@ function updateExistingProfileFromUser(
 			: null;
 	const followersCount = Number(metrics?.followers_count ?? 0);
 	const bio = String(user.description ?? "");
+	const avatarUrl = normalizeAvatarUrl(user.profile_image_url);
 
 	db.prepare(
 		`
@@ -177,15 +185,16 @@ function updateExistingProfileFromUser(
     set handle = ?,
         display_name = ?,
         bio = ?,
-        followers_count = ?
+        followers_count = ?,
+        avatar_url = coalesce(?, avatar_url)
     where id = ?
     `,
-	).run(username, displayName, bio, followersCount, profileId);
+	).run(username, displayName, bio, followersCount, avatarUrl, profileId);
 
 	const row = db
 		.prepare(
 			`
-      select id, handle, display_name, bio, followers_count, avatar_hue, created_at
+      select id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at
       from profiles
       where id = ?
       `,
@@ -205,7 +214,7 @@ function resolveLocalProfile(
 	const row = db
 		.prepare(
 			`
-      select id, handle, display_name, bio, followers_count, avatar_hue, created_at
+      select id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at
       from profiles
       where id = ? or handle = ?
       limit 1
@@ -369,6 +378,7 @@ export function listBlocks({
         p.bio,
         p.followers_count,
         p.avatar_hue,
+        p.avatar_url,
         p.created_at
       from blocks b
       join accounts a on a.id = b.account_id
@@ -414,6 +424,7 @@ export function searchBlockCandidates({
         p.bio,
         p.followers_count,
         p.avatar_hue,
+        p.avatar_url,
         p.created_at,
         b.created_at as blocked_at
       from profiles p

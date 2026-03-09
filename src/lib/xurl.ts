@@ -234,7 +234,7 @@ export async function listBlockedUsers(
 ) {
 	const query = new URLSearchParams({
 		max_results: "100",
-		"user.fields": "description,public_metrics,created_at",
+		"user.fields": "description,public_metrics,profile_image_url,created_at",
 	});
 	if (paginationToken) {
 		query.set("pagination_token", paginationToken);

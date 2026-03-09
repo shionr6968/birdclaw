@@ -1,0 +1,91 @@
+// @vitest-environment node
+import { mkdtempSync, rmSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, describe, expect, it } from "vitest";
+import { resetBirdclawPathsForTests } from "#/lib/config";
+import { getNativeDb, resetDatabaseForTests } from "#/lib/db";
+import { Route } from "./avatar";
+
+const tempDirs: string[] = [];
+
+afterEach(() => {
+	resetDatabaseForTests();
+	resetBirdclawPathsForTests();
+	delete process.env.BIRDCLAW_HOME;
+
+	for (const dir of tempDirs.splice(0)) {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+describe("avatar api route", () => {
+	it("returns 400 when profileId is missing", async () => {
+		const response = await Route.options.server.handlers.GET({
+			request: new Request("http://birdclaw.test/api/avatar"),
+		});
+
+		expect(response.status).toBe(400);
+	});
+
+	it("returns cached avatar bytes for a profile", async () => {
+		const tempDir = mkdtempSync(path.join(os.tmpdir(), "birdclaw-avatar-api-"));
+		tempDirs.push(tempDir);
+		process.env.BIRDCLAW_HOME = tempDir;
+
+		const db = getNativeDb();
+		db.prepare(
+			"insert into profiles (id, handle, display_name, bio, followers_count, avatar_hue, avatar_url, created_at) values (?, ?, ?, ?, ?, ?, ?, ?)",
+		).run(
+			"profile_demo",
+			"demo",
+			"Demo",
+			"",
+			0,
+			18,
+			"data:image/svg+xml;utf8," +
+				encodeURIComponent(
+					'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><rect width="8" height="8" fill="#111"/></svg>',
+				),
+			"2026-03-08T12:00:00.000Z",
+		);
+
+		const response = await Route.options.server.handlers.GET({
+			request: new Request(
+				"http://birdclaw.test/api/avatar?profileId=profile_demo",
+			),
+		});
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get("content-type")).toBe("image/svg+xml");
+		await expect(response.text()).resolves.toContain("<svg");
+	});
+
+	it("returns 404 when a profile has no avatar", async () => {
+		const tempDir = mkdtempSync(path.join(os.tmpdir(), "birdclaw-avatar-api-"));
+		tempDirs.push(tempDir);
+		process.env.BIRDCLAW_HOME = tempDir;
+
+		getNativeDb()
+			.prepare(
+				"insert into profiles (id, handle, display_name, bio, followers_count, avatar_hue, created_at) values (?, ?, ?, ?, ?, ?, ?)",
+			)
+			.run(
+				"profile_demo",
+				"demo",
+				"Demo",
+				"",
+				0,
+				18,
+				"2026-03-08T12:00:00.000Z",
+			);
+
+		const response = await Route.options.server.handlers.GET({
+			request: new Request(
+				"http://birdclaw.test/api/avatar?profileId=profile_demo",
+			),
+		});
+
+		expect(response.status).toBe(404);
+	});
+});

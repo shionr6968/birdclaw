@@ -57,6 +57,15 @@ describe("database init", () => {
 			]),
 		);
 
+		const profileColumnNames = db
+			.prepare("pragma table_info(profiles)")
+			.all() as Array<{
+			name: string;
+		}>;
+		expect(profileColumnNames.map((column) => column.name)).toEqual(
+			expect.arrayContaining(["avatar_url"]),
+		);
+
 		const quotedIndex = db
 			.prepare("pragma index_info(idx_tweets_quoted)")
 			.all() as Array<{ name: string }>;

@@ -75,6 +75,8 @@ describe("profile hydration", () => {
 				username: "sam",
 				name: "Sam Altman",
 				description: "Working on AGI",
+				profile_image_url:
+					"https://pbs.twimg.com/profile_images/42/avatar_normal.jpg",
 				created_at: "2020-01-01T00:00:00.000Z",
 				public_metrics: { followers_count: 123 },
 			},
@@ -83,6 +85,8 @@ describe("profile hydration", () => {
 			username: "steipete",
 			name: "Peter Steinberger",
 			description: "Bio",
+			profile_image_url:
+				"https://pbs.twimg.com/profile_images/7/avatar_bigger.jpg",
 			created_at: "2009-03-19T22:54:05.000Z",
 			public_metrics: { followers_count: 421507 },
 		});
@@ -91,13 +95,14 @@ describe("profile hydration", () => {
 		const result = await hydrateProfilesFromX();
 		const hydrated = db
 			.prepare(
-				"select handle, display_name, bio, followers_count from profiles where id = 'profile_user_42'",
+				"select handle, display_name, bio, followers_count, avatar_url from profiles where id = 'profile_user_42'",
 			)
 			.get() as {
 			handle: string;
 			display_name: string;
 			bio: string;
 			followers_count: number;
+			avatar_url: string;
 		};
 		const title = db
 			.prepare("select title from dm_conversations where id = 'dm_1'")
@@ -112,6 +117,7 @@ describe("profile hydration", () => {
 			display_name: "Sam Altman",
 			bio: "Working on AGI",
 			followers_count: 123,
+			avatar_url: "https://pbs.twimg.com/profile_images/42/avatar.jpg",
 		});
 		expect(title.title).toBe("Sam Altman");
 	});

@@ -106,8 +106,10 @@ export function DmWorkspace({
 							type="button"
 						>
 							<AvatarChip
+								avatarUrl={conversation.participant.avatarUrl}
 								hue={conversation.participant.avatarHue}
 								name={conversation.participant.displayName}
+								profileId={conversation.participant.id}
 							/>
 							<div className={dmListCopyClass}>
 								<div className={identityRowClass}>
@@ -202,8 +204,10 @@ export function DmWorkspace({
 					<>
 						<p className={eyebrowClass}>sender context</p>
 						<AvatarChip
+							avatarUrl={participant.avatarUrl}
 							hue={participant.avatarHue}
 							name={participant.displayName}
+							profileId={participant.id}
 							size="large"
 						/>
 						<h3 className={threadTitleClass}>{participant.displayName}</h3>

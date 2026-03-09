@@ -43,6 +43,8 @@ function toProfile(row: Record<string, unknown>): ProfileRecord {
 		bio: String(row.bio),
 		followersCount: Number(row.followers_count),
 		avatarHue: Number(row.avatar_hue),
+		avatarUrl:
+			typeof row.avatar_url === "string" ? String(row.avatar_url) : undefined,
 		createdAt: String(row.created_at),
 	};
 }
@@ -93,6 +95,7 @@ function buildEmbeddedTweet(
 		bio: row[`${prefix}bio`],
 		followers_count: row[`${prefix}followers_count`],
 		avatar_hue: row[`${prefix}avatar_hue`],
+		avatar_url: row[`${prefix}avatar_url`],
 		created_at: row[`${prefix}profile_created_at`],
 	});
 
@@ -227,6 +230,7 @@ export function listTimelineItems({
         p.bio,
         p.followers_count,
         p.avatar_hue,
+        p.avatar_url,
         p.created_at as profile_created_at,
         rt.id as reply_id,
         rt.text as reply_text,
@@ -239,6 +243,7 @@ export function listTimelineItems({
         rp.bio as reply_bio,
         rp.followers_count as reply_followers_count,
         rp.avatar_hue as reply_avatar_hue,
+        rp.avatar_url as reply_avatar_url,
         rp.created_at as reply_profile_created_at,
         qt.id as quoted_id,
         qt.text as quoted_text,
@@ -251,6 +256,7 @@ export function listTimelineItems({
         qp.bio as quoted_bio,
         qp.followers_count as quoted_followers_count,
         qp.avatar_hue as quoted_avatar_hue,
+        qp.avatar_url as quoted_avatar_url,
         qp.created_at as quoted_profile_created_at
       from tweets t
       join accounts a on a.id = t.account_id
@@ -275,6 +281,8 @@ export function listTimelineItems({
 			bio: String(row.bio),
 			followersCount: Number(row.followers_count),
 			avatarHue: Number(row.avatar_hue),
+			avatarUrl:
+				typeof row.avatar_url === "string" ? String(row.avatar_url) : undefined,
 			createdAt: String(row.profile_created_at),
 		};
 		const entities = enrichEntities(
@@ -290,6 +298,7 @@ export function listTimelineItems({
 								bio: row.reply_bio,
 								followers_count: row.reply_followers_count,
 								avatar_hue: row.reply_avatar_hue,
+								avatar_url: row.reply_avatar_url,
 								created_at: row.reply_profile_created_at,
 							}),
 						}
@@ -303,6 +312,7 @@ export function listTimelineItems({
 								bio: row.quoted_bio,
 								followers_count: row.quoted_followers_count,
 								avatar_hue: row.quoted_avatar_hue,
+								avatar_url: row.quoted_avatar_url,
 								created_at: row.quoted_profile_created_at,
 							}),
 						}
@@ -400,6 +410,7 @@ export function listDmConversations({
         p.bio,
         p.followers_count,
         p.avatar_hue,
+        p.avatar_url,
         p.created_at as profile_created_at,
         (
           select text
@@ -441,6 +452,10 @@ export function listDmConversations({
 				bio: String(row.bio),
 				followersCount,
 				avatarHue: Number(row.avatar_hue),
+				avatarUrl:
+					typeof row.avatar_url === "string"
+						? String(row.avatar_url)
+						: undefined,
 				createdAt: String(row.profile_created_at),
 			},
 		};
@@ -512,6 +527,7 @@ export function getConversationThread(
         p.bio,
         p.followers_count,
         p.avatar_hue,
+        p.avatar_url,
         p.created_at as profile_created_at
       from dm_messages m
       join profiles p on p.id = m.sender_profile_id
@@ -538,6 +554,7 @@ export function getConversationThread(
 				bio: row.bio,
 				followers_count: row.followers_count,
 				avatar_hue: row.avatar_hue,
+				avatar_url: row.avatar_url,
 				created_at: row.profile_created_at,
 			}),
 		})),
