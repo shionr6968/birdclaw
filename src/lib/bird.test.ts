@@ -4,12 +4,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const execFileAsyncMock = vi.fn();
 
 vi.mock("node:child_process", () => ({
-	execFile: Object.assign(
-		vi.fn(),
-		{
-			[Symbol.for("nodejs.util.promisify.custom")]: execFileAsyncMock,
-		},
-	),
+	execFile: Object.assign(vi.fn(), {
+		[Symbol.for("nodejs.util.promisify.custom")]: execFileAsyncMock,
+	}),
 }));
 
 describe("bird transport wrapper", () => {

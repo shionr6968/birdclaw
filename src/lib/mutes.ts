@@ -1,14 +1,24 @@
+import { muteUserViaBird, unmuteUserViaBird } from "./bird-actions";
 import { getNativeDb } from "./db";
 import {
 	getAccountHandle,
-	getAuthenticatedUserId,
 	getDefaultAccountId,
 	normalizeProfileQuery,
 	resolveProfile,
 	toProfile,
 } from "./moderation-target";
 import type { BlockItem } from "./types";
-import { muteUserViaXurl, unmuteUserViaXurl } from "./xurl";
+
+function getBirdActionQuery(
+	query: string,
+	resolved: Awaited<ReturnType<typeof resolveProfile>>,
+) {
+	return (
+		resolved.externalUserId ??
+		resolved.profile.handle ??
+		normalizeProfileQuery(query)
+	);
+}
 
 export interface MuteItem {
 	accountId: string;
@@ -90,6 +100,17 @@ export async function addMute(accountId: string, query: string) {
 		throw new Error("Cannot mute the current account");
 	}
 	const resolved = await resolveProfile(query);
+	const transport = await muteUserViaBird(getBirdActionQuery(query, resolved));
+
+	if (!transport.ok) {
+		return {
+			ok: false,
+			action: "mute",
+			accountId: resolvedAccountId,
+			profile: resolved.profile,
+			transport,
+		};
+	}
 
 	const mutedAt = new Date().toISOString();
 	db.prepare(
@@ -102,15 +123,6 @@ export async function addMute(accountId: string, query: string) {
     `,
 	).run(resolvedAccountId, resolved.profile.id, mutedAt);
 
-	const sourceUserId = await getAuthenticatedUserId();
-	const transport =
-		sourceUserId && resolved.externalUserId
-			? await muteUserViaXurl(sourceUserId, resolved.externalUserId)
-			: {
-					ok: false,
-					output: "xurl mute transport unavailable for this profile",
-				};
-
 	return {
 		ok: true,
 		action: "mute",
@@ -121,24 +133,57 @@ export async function addMute(accountId: string, query: string) {
 	};
 }
 
+export async function recordMute(accountId: string, query: string) {
+	const db = getNativeDb();
+	const resolvedAccountId = accountId || getDefaultAccountId(db);
+	const accountHandle = getAccountHandle(db, resolvedAccountId);
+	if (normalizeProfileQuery(query) === accountHandle) {
+		throw new Error("Cannot mute the current account");
+	}
+	const resolved = await resolveProfile(query);
+
+	const mutedAt = new Date().toISOString();
+	db.prepare(
+		`
+    insert into mutes (account_id, profile_id, source, created_at)
+    values (?, ?, 'manual', ?)
+    on conflict(account_id, profile_id) do update set
+      source = excluded.source,
+      created_at = excluded.created_at
+    `,
+	).run(resolvedAccountId, resolved.profile.id, mutedAt);
+
+	return {
+		ok: true,
+		action: "record-mute",
+		accountId: resolvedAccountId,
+		mutedAt,
+		profile: resolved.profile,
+	};
+}
+
 export async function removeMute(accountId: string, query: string) {
 	const db = getNativeDb();
 	const resolvedAccountId = accountId || getDefaultAccountId(db);
 	const resolved = await resolveProfile(query);
+	const transport = await unmuteUserViaBird(
+		getBirdActionQuery(query, resolved),
+	);
+
+	if (!transport.ok) {
+		return {
+			ok: false,
+			action: "unmute",
+			accountId: resolvedAccountId,
+			profile: resolved.profile,
+			transport,
+		};
+	}
 
 	db.prepare("delete from mutes where account_id = ? and profile_id = ?").run(
 		resolvedAccountId,
 		resolved.profile.id,
 	);
-
-	const sourceUserId = await getAuthenticatedUserId();
-	const transport =
-		sourceUserId && resolved.externalUserId
-			? await unmuteUserViaXurl(sourceUserId, resolved.externalUserId)
-			: {
-					ok: false,
-					output: "xurl unmute transport unavailable for this profile",
-				};
 
 	return {
 		ok: true,

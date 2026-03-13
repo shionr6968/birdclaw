@@ -6,7 +6,13 @@ import { Command } from "commander";
 import { findArchives } from "#/lib/archive-finder";
 import { importArchive } from "#/lib/archive-import";
 import { importBlocklist } from "#/lib/blocklist";
-import { addBlock, listBlocks, removeBlock } from "#/lib/blocks";
+import {
+	addBlock,
+	listBlocks,
+	recordBlock,
+	removeBlock,
+	syncBlocks,
+} from "#/lib/blocks";
 import {
 	ensureBirdclawDirs,
 	getBirdclawPaths,
@@ -18,7 +24,7 @@ import {
 	exportMentionsViaCachedBird,
 	exportMentionsViaCachedXurl,
 } from "#/lib/mentions-live";
-import { addMute, listMutes, removeMute } from "#/lib/mutes";
+import { addMute, listMutes, recordMute, removeMute } from "#/lib/mutes";
 import { hydrateProfilesFromX } from "#/lib/profile-hydration";
 import { inspectProfileReplies } from "#/lib/profile-replies";
 import {
@@ -329,6 +335,25 @@ blocksCommand
 	});
 
 blocksCommand
+	.command("sync")
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (options) => {
+		const result = await syncBlocks(options.account);
+		print(result, program.opts().json ?? false);
+	});
+
+blocksCommand
+	.command("record <query>")
+	.description(
+		"Record a known-good remote block locally without another live write",
+	)
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await recordBlock(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+blocksCommand
 	.command("import <path>")
 	.description("Import a newline-delimited blocklist file")
 	.option("--account <accountId>", "Account id", "acct_primary")
@@ -368,6 +393,17 @@ mutesCommand
 	.option("--account <accountId>", "Account id", "acct_primary")
 	.action(async (query, options) => {
 		const result = await removeMute(options.account, query);
+		print(result, program.opts().json ?? false);
+	});
+
+mutesCommand
+	.command("record <query>")
+	.description(
+		"Record a known-good remote mute locally without another live write",
+	)
+	.option("--account <accountId>", "Account id", "acct_primary")
+	.action(async (query, options) => {
+		const result = await recordMute(options.account, query);
 		print(result, program.opts().json ?? false);
 	});
 

@@ -50,8 +50,10 @@ plain text should be ignored
 		writeFileSync(filePath, "@alpha\n@beta\n");
 		addBlockMock
 			.mockResolvedValueOnce({
+				ok: true,
 				blockedAt: "2026-03-09T00:00:00.000Z",
 				profile: { handle: "alpha" },
+				transport: { ok: true, output: "blocked" },
 			})
 			.mockRejectedValueOnce(new Error("Profile not found: @beta"));
 		const { importBlocklist } = await import("./blocklist");

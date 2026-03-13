@@ -1,8 +1,8 @@
 import type Database from "better-sqlite3";
+import { blockUserViaBird, unblockUserViaBird } from "./bird-actions";
 import { getNativeDb } from "./db";
 import {
 	getAccountHandle,
-	getAuthenticatedUserId,
 	getDefaultAccountId,
 	normalizeProfileQuery,
 	resolveProfile,
@@ -15,16 +15,7 @@ import type {
 	XurlMentionUser,
 } from "./types";
 import { upsertProfileFromXUser } from "./x-profile";
-import { blockUserViaXWeb, unblockUserViaXWeb } from "./x-web";
-import {
-	blockUserViaXurl,
-	listBlockedUsers,
-	lookupAuthenticatedUser,
-	unblockUserViaXurl,
-} from "./xurl";
-
-const XURL_BLOCK_OAUTH2_FORBIDDEN =
-	"You are not permitted to use OAuth2 on this endpoint";
+import { listBlockedUsers, lookupAuthenticatedUser } from "./xurl";
 
 function remoteBlockSyncDisabled() {
 	return process.env.BIRDCLAW_DISABLE_LIVE_WRITES === "1";
@@ -70,35 +61,15 @@ function pruneRemoteBlocks(
 	).run(accountId, ...profileIds);
 }
 
-async function maybeUseXWebBlockFallback(
-	action: "block" | "unblock",
-	targetUserId: string | undefined,
-	transport: { ok: boolean; output: string },
+function getBirdActionQuery(
+	query: string,
+	resolved: Awaited<ReturnType<typeof resolveProfile>>,
 ) {
-	if (transport.ok || !targetUserId) {
-		return transport;
-	}
-
-	if (!transport.output.includes(XURL_BLOCK_OAUTH2_FORBIDDEN)) {
-		return transport;
-	}
-
-	const fallback =
-		action === "block"
-			? await blockUserViaXWeb(targetUserId)
-			: await unblockUserViaXWeb(targetUserId);
-
-	if (fallback.ok) {
-		return {
-			ok: true,
-			output: `${fallback.output}; xurl OAuth2 write rejected`,
-		};
-	}
-
-	return {
-		ok: false,
-		output: `${transport.output}; ${fallback.output}`,
-	};
+	return (
+		resolved.externalUserId ??
+		resolved.profile.handle ??
+		normalizeProfileQuery(query)
+	);
 }
 
 export function listBlocks({
@@ -260,6 +231,17 @@ export async function addBlock(accountId: string, query: string) {
 		throw new Error("Cannot block the current account");
 	}
 	const resolved = await resolveProfile(query);
+	const transport = await blockUserViaBird(getBirdActionQuery(query, resolved));
+
+	if (!transport.ok) {
+		return {
+			ok: false,
+			action: "block",
+			accountId: resolvedAccountId,
+			profile: resolved.profile,
+			transport,
+		};
+	}
 
 	const blockedAt = new Date().toISOString();
 	db.prepare(
@@ -272,20 +254,6 @@ export async function addBlock(accountId: string, query: string) {
     `,
 	).run(resolvedAccountId, resolved.profile.id, blockedAt);
 
-	const sourceUserId = await getAuthenticatedUserId();
-	const initialTransport =
-		sourceUserId && resolved.externalUserId
-			? await blockUserViaXurl(sourceUserId, resolved.externalUserId)
-			: {
-					ok: false,
-					output: "xurl block transport unavailable for this profile",
-				};
-	const transport = await maybeUseXWebBlockFallback(
-		"block",
-		resolved.externalUserId,
-		initialTransport,
-	);
-
 	return {
 		ok: true,
 		action: "block",
@@ -296,28 +264,56 @@ export async function addBlock(accountId: string, query: string) {
 	};
 }
 
+export async function recordBlock(accountId: string, query: string) {
+	const db = getNativeDb();
+	const resolvedAccountId = accountId || getDefaultAccountId(db);
+	const accountHandle = getAccountHandle(db, resolvedAccountId);
+	if (normalizeProfileQuery(query) === accountHandle) {
+		throw new Error("Cannot block the current account");
+	}
+	const resolved = await resolveProfile(query);
+
+	const blockedAt = new Date().toISOString();
+	db.prepare(
+		`
+    insert into blocks (account_id, profile_id, source, created_at)
+    values (?, ?, 'manual', ?)
+    on conflict(account_id, profile_id) do update set
+      source = excluded.source,
+      created_at = excluded.created_at
+    `,
+	).run(resolvedAccountId, resolved.profile.id, blockedAt);
+
+	return {
+		ok: true,
+		action: "record-block",
+		accountId: resolvedAccountId,
+		blockedAt,
+		profile: resolved.profile,
+	};
+}
+
 export async function removeBlock(accountId: string, query: string) {
 	const db = getNativeDb();
 	const resolvedAccountId = accountId || getDefaultAccountId(db);
 	const resolved = await resolveProfile(query);
+	const transport = await unblockUserViaBird(
+		getBirdActionQuery(query, resolved),
+	);
+
+	if (!transport.ok) {
+		return {
+			ok: false,
+			action: "unblock",
+			accountId: resolvedAccountId,
+			profile: resolved.profile,
+			transport,
+		};
+	}
 
 	db.prepare("delete from blocks where account_id = ? and profile_id = ?").run(
 		resolvedAccountId,
 		resolved.profile.id,
-	);
-
-	const sourceUserId = await getAuthenticatedUserId();
-	const initialTransport =
-		sourceUserId && resolved.externalUserId
-			? await unblockUserViaXurl(sourceUserId, resolved.externalUserId)
-			: {
-					ok: false,
-					output: "xurl unblock transport unavailable for this profile",
-				};
-	const transport = await maybeUseXWebBlockFallback(
-		"unblock",
-		resolved.externalUserId,
-		initialTransport,
 	);
 
 	return {

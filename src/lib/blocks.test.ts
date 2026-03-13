@@ -7,28 +7,24 @@ import { resetBirdclawPathsForTests } from "./config";
 import { getNativeDb, resetDatabaseForTests } from "./db";
 
 const mocks = vi.hoisted(() => ({
-	blockUserViaXurl: vi.fn(),
-	blockUserViaXWeb: vi.fn(),
+	blockUserViaBird: vi.fn(),
 	listBlockedUsers: vi.fn(),
 	lookupAuthenticatedUser: vi.fn(),
 	lookupUsersByHandles: vi.fn(),
 	lookupUsersByIds: vi.fn(),
-	unblockUserViaXurl: vi.fn(),
-	unblockUserViaXWeb: vi.fn(),
+	unblockUserViaBird: vi.fn(),
+}));
+
+vi.mock("./bird-actions", () => ({
+	blockUserViaBird: mocks.blockUserViaBird,
+	unblockUserViaBird: mocks.unblockUserViaBird,
 }));
 
 vi.mock("./xurl", () => ({
-	blockUserViaXurl: mocks.blockUserViaXurl,
 	listBlockedUsers: mocks.listBlockedUsers,
 	lookupAuthenticatedUser: mocks.lookupAuthenticatedUser,
 	lookupUsersByHandles: mocks.lookupUsersByHandles,
 	lookupUsersByIds: mocks.lookupUsersByIds,
-	unblockUserViaXurl: mocks.unblockUserViaXurl,
-}));
-
-vi.mock("./x-web", () => ({
-	blockUserViaXWeb: mocks.blockUserViaXWeb,
-	unblockUserViaXWeb: mocks.unblockUserViaXWeb,
 }));
 
 const tempRoots: string[] = [];
@@ -46,14 +42,12 @@ afterEach(() => {
 	resetBirdclawPathsForTests();
 	delete process.env.BIRDCLAW_HOME;
 	process.env.BIRDCLAW_DISABLE_LIVE_WRITES = "1";
-	mocks.blockUserViaXurl.mockReset();
-	mocks.blockUserViaXWeb.mockReset();
+	mocks.blockUserViaBird.mockReset();
 	mocks.listBlockedUsers.mockReset();
 	mocks.lookupAuthenticatedUser.mockReset();
 	mocks.lookupUsersByHandles.mockReset();
 	mocks.lookupUsersByIds.mockReset();
-	mocks.unblockUserViaXurl.mockReset();
-	mocks.unblockUserViaXWeb.mockReset();
+	mocks.unblockUserViaBird.mockReset();
 
 	for (const tempRoot of tempRoots.splice(0)) {
 		rmSync(tempRoot, { recursive: true, force: true });
@@ -65,18 +59,13 @@ describe("blocklist", () => {
 		delete process.env.BIRDCLAW_DISABLE_LIVE_WRITES;
 		mocks.lookupAuthenticatedUser.mockResolvedValue({ id: "1" });
 		mocks.listBlockedUsers.mockResolvedValue({ items: [], nextToken: null });
-		mocks.blockUserViaXurl.mockResolvedValue({ ok: true, output: "blocked" });
-		mocks.blockUserViaXWeb.mockResolvedValue({
+		mocks.blockUserViaBird.mockResolvedValue({
 			ok: true,
-			output: "x-web block ok via browser",
+			output: "blocked via bird; verified blocking=true",
 		});
-		mocks.unblockUserViaXurl.mockResolvedValue({
+		mocks.unblockUserViaBird.mockResolvedValue({
 			ok: true,
-			output: "unblocked",
-		});
-		mocks.unblockUserViaXWeb.mockResolvedValue({
-			ok: true,
-			output: "x-web unblock ok via browser",
+			output: "unblocked via bird; verified blocking=false",
 		});
 		mocks.lookupUsersByHandles.mockResolvedValue([
 			{
@@ -108,9 +97,12 @@ describe("blocklist", () => {
 			await import("./blocks");
 
 		const addResult = await addBlock("acct_primary", "@amelia");
-		expect(addResult.transport).toEqual({ ok: true, output: "blocked" });
+		expect(addResult.transport).toEqual({
+			ok: true,
+			output: "blocked via bird; verified blocking=true",
+		});
 		expect(mocks.lookupUsersByHandles).toHaveBeenCalledWith(["amelia"]);
-		expect(mocks.blockUserViaXurl).toHaveBeenCalledWith("1", "7");
+		expect(mocks.blockUserViaBird).toHaveBeenCalledWith("7");
 
 		const listed = listBlocks({ account: "acct_primary" });
 		expect(listed).toHaveLength(1);
@@ -128,8 +120,11 @@ describe("blocklist", () => {
 		expect(response.matches[0]?.isBlocked).toBe(true);
 
 		const removeResult = await removeBlock("acct_primary", "amelia");
-		expect(removeResult.transport).toEqual({ ok: true, output: "unblocked" });
-		expect(mocks.unblockUserViaXurl).toHaveBeenCalledWith("1", "7");
+		expect(removeResult.transport).toEqual({
+			ok: true,
+			output: "unblocked via bird; verified blocking=false",
+		});
+		expect(mocks.unblockUserViaBird).toHaveBeenCalledWith("7");
 		expect(listBlocks({ account: "acct_primary" })).toHaveLength(0);
 	});
 
@@ -146,58 +141,22 @@ describe("blocklist", () => {
 		expect(listBlocks({ account: "acct_primary" })).toHaveLength(0);
 	});
 
-	it("stores local blocks even when transport fails", async () => {
+	it("does not persist local blocks when bird transport fails", async () => {
 		setupTempHome();
-		mocks.blockUserViaXurl.mockResolvedValue({
+		mocks.blockUserViaBird.mockResolvedValue({
 			ok: false,
-			output: "remote blocks unavailable",
+			output: "bird block failed",
 		});
 		const { addBlock, listBlocks } = await import("./blocks");
 
 		const result = await addBlock("acct_primary", "amelia");
 
+		expect(result.ok).toBe(false);
 		expect(result.transport).toEqual({
 			ok: false,
-			output: "remote blocks unavailable",
+			output: "bird block failed",
 		});
-		expect(listBlocks({ account: "acct_primary" })).toHaveLength(1);
-	});
-
-	it("falls back to x-web when xurl rejects block writes for oauth2", async () => {
-		setupTempHome();
-		mocks.blockUserViaXurl.mockResolvedValue({
-			ok: false,
-			output:
-				"Command failed: xurl ... You are not permitted to use OAuth2 on this endpoint",
-		});
-		const { addBlock } = await import("./blocks");
-
-		const result = await addBlock("acct_primary", "amelia");
-
-		expect(mocks.blockUserViaXWeb).toHaveBeenCalledWith("7");
-		expect(result.transport).toEqual({
-			ok: true,
-			output: "x-web block ok via browser; xurl OAuth2 write rejected",
-		});
-	});
-
-	it("falls back to x-web when xurl rejects unblock writes for oauth2", async () => {
-		setupTempHome();
-		mocks.unblockUserViaXurl.mockResolvedValue({
-			ok: false,
-			output:
-				"Command failed: xurl ... You are not permitted to use OAuth2 on this endpoint",
-		});
-		const { addBlock, removeBlock } = await import("./blocks");
-
-		await addBlock("acct_primary", "amelia");
-		const result = await removeBlock("acct_primary", "amelia");
-
-		expect(mocks.unblockUserViaXWeb).toHaveBeenCalledWith("7");
-		expect(result.transport).toEqual({
-			ok: true,
-			output: "x-web unblock ok via browser; xurl OAuth2 write rejected",
-		});
+		expect(listBlocks({ account: "acct_primary" })).toHaveLength(0);
 	});
 
 	it("rejects blocking the current account", async () => {
@@ -218,51 +177,13 @@ describe("blocklist", () => {
 		).toEqual([]);
 	});
 
-	it("falls back to local-only blocking when xurl lookup is unavailable", async () => {
+	it("uses the default account id when omitted", async () => {
 		setupTempHome();
-		mocks.lookupUsersByHandles.mockRejectedValue(new Error("xurl missing"));
-		const { addBlock, listBlocks } = await import("./blocks");
-
-		const result = await addBlock("acct_primary", "amelia");
-
-		expect(result.transport).toEqual({
-			ok: false,
-			output: "xurl block transport unavailable for this profile",
-		});
-		expect(listBlocks({ account: "acct_primary" })[0]?.profile.handle).toBe(
-			"amelia",
-		);
-	});
-
-	it("uses the default account id and local-only transport when auth is missing", async () => {
-		setupTempHome();
-		mocks.lookupAuthenticatedUser.mockResolvedValue(null);
 		const { addBlock, listBlocks } = await import("./blocks");
 
 		const result = await addBlock("", "amelia");
 
 		expect(result.accountId).toBe("acct_primary");
-		expect(result.transport).toEqual({
-			ok: false,
-			output: "xurl block transport unavailable for this profile",
-		});
-		expect(listBlocks({ account: "acct_primary" })).toHaveLength(1);
-	});
-
-	it("degrades to local-only blocking when xurl auth lookup throws", async () => {
-		setupTempHome();
-		mocks.lookupAuthenticatedUser.mockRejectedValue(
-			new Error("spawn xurl ENOENT"),
-		);
-		const { addBlock, listBlocks } = await import("./blocks");
-
-		const result = await addBlock("acct_primary", "amelia");
-
-		expect(result.ok).toBe(true);
-		expect(result.transport).toEqual({
-			ok: false,
-			output: "xurl block transport unavailable for this profile",
-		});
 		expect(listBlocks({ account: "acct_primary" })).toHaveLength(1);
 	});
 
@@ -396,19 +317,23 @@ describe("blocklist", () => {
 		).toEqual(["avawires"]);
 	});
 
-	it("removes blocks locally when transport cannot run", async () => {
+	it("keeps local rows when bird unblock fails", async () => {
 		setupTempHome();
-		mocks.lookupAuthenticatedUser.mockResolvedValue(null);
+		mocks.unblockUserViaBird.mockResolvedValue({
+			ok: false,
+			output: "bird unblock failed",
+		});
 		const { addBlock, listBlocks, removeBlock } = await import("./blocks");
 
 		await addBlock("acct_primary", "amelia");
 		const result = await removeBlock("acct_primary", "amelia");
 
+		expect(result.ok).toBe(false);
 		expect(result.transport).toEqual({
 			ok: false,
-			output: "xurl unblock transport unavailable for this profile",
+			output: "bird unblock failed",
 		});
-		expect(listBlocks({ account: "acct_primary" })).toHaveLength(0);
+		expect(listBlocks({ account: "acct_primary" })).toHaveLength(1);
 	});
 
 	it("throws for blank or unknown profiles", async () => {
@@ -436,7 +361,7 @@ describe("blocklist", () => {
 
 		expect(mocks.lookupUsersByHandles).not.toHaveBeenCalled();
 		expect(mocks.lookupUsersByIds).not.toHaveBeenCalled();
-		expect(mocks.blockUserViaXurl).toHaveBeenCalledWith("1", "99");
+		expect(mocks.blockUserViaBird).toHaveBeenCalledWith("99");
 	});
 
 	it("persists block rows in sqlite", async () => {

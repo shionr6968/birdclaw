@@ -9,12 +9,15 @@ const findArchivesMock = vi.fn();
 const importArchiveMock = vi.fn();
 const importBlocklistMock = vi.fn();
 const addBlockMock = vi.fn();
+const recordBlockMock = vi.fn();
+const syncBlocksMock = vi.fn();
 const exportMentionItemsMock = vi.fn();
 const exportMentionsViaCachedBirdMock = vi.fn();
 const exportMentionsViaCachedXurlMock = vi.fn();
 const listBlocksMock = vi.fn();
 const addMuteMock = vi.fn();
 const listMutesMock = vi.fn();
+const recordMuteMock = vi.fn();
 const listInboxItemsMock = vi.fn();
 const scoreInboxMock = vi.fn();
 const listTimelineItemsMock = vi.fn();
@@ -61,7 +64,9 @@ vi.mock("#/lib/blocklist", () => ({
 vi.mock("#/lib/blocks", () => ({
 	addBlock: (...args: unknown[]) => addBlockMock(...args),
 	listBlocks: (...args: unknown[]) => listBlocksMock(...args),
+	recordBlock: (...args: unknown[]) => recordBlockMock(...args),
 	removeBlock: (...args: unknown[]) => removeBlockMock(...args),
+	syncBlocks: (...args: unknown[]) => syncBlocksMock(...args),
 }));
 
 vi.mock("#/lib/inbox", () => ({
@@ -72,6 +77,7 @@ vi.mock("#/lib/inbox", () => ({
 vi.mock("#/lib/mutes", () => ({
 	addMute: (...args: unknown[]) => addMuteMock(...args),
 	listMutes: (...args: unknown[]) => listMutesMock(...args),
+	recordMute: (...args: unknown[]) => recordMuteMock(...args),
 	removeMute: (...args: unknown[]) => removeMuteMock(...args),
 }));
 
@@ -126,12 +132,15 @@ describe("cli", () => {
 		importArchiveMock.mockReset();
 		importBlocklistMock.mockReset();
 		addBlockMock.mockReset();
+		recordBlockMock.mockReset();
+		syncBlocksMock.mockReset();
 		exportMentionItemsMock.mockReset();
 		exportMentionsViaCachedBirdMock.mockReset();
 		exportMentionsViaCachedXurlMock.mockReset();
 		listBlocksMock.mockReset();
 		addMuteMock.mockReset();
 		listMutesMock.mockReset();
+		recordMuteMock.mockReset();
 		listInboxItemsMock.mockReset();
 		scoreInboxMock.mockReset();
 		listTimelineItemsMock.mockReset();
@@ -157,8 +166,8 @@ describe("cli", () => {
 			rootDir: "/tmp/.birdclaw",
 			dbPath: "/tmp/.birdclaw/birdclaw.sqlite",
 		});
-		resolveMentionsDataSourceMock.mockImplementation((mode?: string) =>
-			mode ?? "birdclaw",
+		resolveMentionsDataSourceMock.mockImplementation(
+			(mode?: string) => mode ?? "birdclaw",
 		);
 		getQueryEnvelopeMock.mockResolvedValue({
 			stats: { home: 4, mentions: 2, dms: 4, needsReply: 2, inbox: 4 },
@@ -181,6 +190,12 @@ describe("cli", () => {
 			items: [],
 		});
 		addBlockMock.mockResolvedValue({ ok: true, action: "block" });
+		recordBlockMock.mockResolvedValue({ ok: true, action: "record-block" });
+		syncBlocksMock.mockResolvedValue({
+			ok: true,
+			synced: true,
+			syncedCount: 3,
+		});
 		exportMentionItemsMock.mockReturnValue([
 			{
 				id: "tweet_mention_1",
@@ -201,6 +216,7 @@ describe("cli", () => {
 		listBlocksMock.mockReturnValue([{ accountId: "acct_primary" }]);
 		addMuteMock.mockResolvedValue({ ok: true, action: "mute" });
 		listMutesMock.mockReturnValue([{ accountId: "acct_primary" }]);
+		recordMuteMock.mockResolvedValue({ ok: true, action: "record-mute" });
 		listInboxItemsMock.mockReturnValue([{ id: "dm:1" }]);
 		scoreInboxMock.mockResolvedValue({ ok: true });
 		listTimelineItemsMock.mockReturnValue([{ id: "tweet_1" }]);
@@ -560,6 +576,23 @@ describe("cli", () => {
 			"--account",
 			"acct_studio",
 		]);
+		await runCli([
+			"node",
+			"birdclaw",
+			"blocks",
+			"sync",
+			"--account",
+			"acct_studio",
+		]);
+		await runCli([
+			"node",
+			"birdclaw",
+			"blocks",
+			"record",
+			"@sam",
+			"--account",
+			"acct_studio",
+		]);
 
 		expect(listBlocksMock).toHaveBeenCalledWith({
 			account: "acct_studio",
@@ -572,6 +605,8 @@ describe("cli", () => {
 		);
 		expect(addBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(removeBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
+		expect(syncBlocksMock).toHaveBeenCalledWith("acct_studio");
+		expect(recordBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 	});
 
 	it("dispatches mute and ban commands", async () => {
@@ -606,6 +641,15 @@ describe("cli", () => {
 		await runCli([
 			"node",
 			"birdclaw",
+			"mutes",
+			"record",
+			"@sam",
+			"--account",
+			"acct_studio",
+		]);
+		await runCli([
+			"node",
+			"birdclaw",
 			"ban",
 			"@sam",
 			"--account",
@@ -627,6 +671,7 @@ describe("cli", () => {
 		});
 		expect(addMuteMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(removeMuteMock).toHaveBeenCalledWith("acct_studio", "@sam");
+		expect(recordMuteMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(addBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 		expect(removeBlockMock).toHaveBeenCalledWith("acct_studio", "@sam");
 	});

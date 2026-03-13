@@ -1,7 +1,11 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { getBirdCommand } from "./config";
-import type { XurlMentionData, XurlMentionUser, XurlMentionsResponse } from "./types";
+import type {
+	XurlMentionData,
+	XurlMentionsResponse,
+	XurlMentionUser,
+} from "./types";
 
 const execFileAsync = promisify(execFile);
 
@@ -59,7 +63,9 @@ function toMediaEntities(media: BirdMentionMedia[] | undefined) {
 function normalizeBirdMentions(items: BirdMentionItem[]): XurlMentionsResponse {
 	const users = new Map<string, XurlMentionUser>();
 	const data = items.map((item): XurlMentionData => {
-		const authorId = String(item.authorId ?? item.author?.username ?? "unknown");
+		const authorId = String(
+			item.authorId ?? item.author?.username ?? "unknown",
+		);
 		if (!users.has(authorId)) {
 			users.set(authorId, {
 				id: authorId,
@@ -86,7 +92,8 @@ function normalizeBirdMentions(items: BirdMentionItem[]): XurlMentionsResponse {
 
 	return {
 		data,
-		includes: users.size > 0 ? { users: Array.from(users.values()) } : undefined,
+		includes:
+			users.size > 0 ? { users: Array.from(users.values()) } : undefined,
 		meta: {
 			result_count: data.length,
 			page_count: 1,

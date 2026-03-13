@@ -84,6 +84,14 @@ export async function importBlocklist(accountId: string, filePath: string) {
 	for (const query of queries) {
 		try {
 			const result = await addBlock(accountId, query);
+			if (!result.ok) {
+				items.push({
+					query,
+					ok: false,
+					error: result.transport.output || "block failed",
+				});
+				continue;
+			}
 			items.push({
 				query,
 				ok: true,
