@@ -232,8 +232,10 @@ pnpm cli inbox --score --hide-low-signal --limit 8 --json
 
 ```bash
 pnpm cli blocks list --account acct_primary --json
+pnpm cli blocks sync --account acct_primary --json
 pnpm cli blocks import ~/triage/blocklist.txt --account acct_primary --json
 pnpm cli blocks add @amelia --account acct_primary --json
+pnpm cli blocks record @amelia --account acct_primary --json
 pnpm cli blocks remove @amelia --account acct_primary --json
 pnpm cli ban @amelia --account acct_primary --json
 pnpm cli unban @amelia --account acct_primary --json
@@ -241,9 +243,10 @@ pnpm cli unban @amelia --account acct_primary --json
 
 Notes:
 
-- block/unblock tries `xurl` first
-- if X rejects `xurl` OAuth2 block writes, birdclaw falls back to the X web cookie session (`auth_token` + `ct0`) when available
+- `ban` / `unban` use `bird` for the live action, verify with `bird status`, and only then update local sqlite
 - `blocks import` accepts newline-delimited blocklists with comments and markdown bullets
+- `blocks sync` is for slow/manual remote reconciliation; not for a hot cron loop
+- `blocks record` stores a known-good remote block locally without issuing another live write
 
 Example blocklist file:
 
@@ -276,7 +279,13 @@ Typical tell:
 ```bash
 pnpm cli mutes list --account acct_primary --json
 pnpm cli mute @amelia --account acct_primary --json
+pnpm cli mutes record @amelia --account acct_primary --json
 pnpm cli unmute @amelia --account acct_primary --json
+
+Notes:
+
+- `mute` / `unmute` use `bird` for the live action, verify with `bird status`, and only then update local sqlite
+- `mutes record` stores a known-good remote mute locally without issuing another live write
 ```
 
 ### Compose / reply
@@ -323,11 +332,11 @@ pnpm cli auth status --json
 ## Testing
 
 ```bash
-fnm exec --using 24.12.0 pnpm check
-fnm exec --using 24.12.0 pnpm test
-fnm exec --using 24.12.0 pnpm coverage
-fnm exec --using 24.12.0 pnpm build
-fnm exec --using 24.12.0 pnpm e2e
+fnm exec --using 25.8.1 pnpm check
+fnm exec --using 25.8.1 pnpm test
+fnm exec --using 25.8.1 pnpm coverage
+fnm exec --using 25.8.1 pnpm build
+fnm exec --using 25.8.1 pnpm e2e
 ```
 
 Current bar:

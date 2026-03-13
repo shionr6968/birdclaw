@@ -14,17 +14,17 @@ import {
 
 const tempRoots: string[] = [];
 
-	afterEach(() => {
-		resetBirdclawPathsForTests();
-		delete process.env.BIRDCLAW_HOME;
-		delete process.env.BIRDCLAW_CONFIG;
-		delete process.env.BIRDCLAW_BIRD_COMMAND;
-		delete process.env.BIRDCLAW_MENTIONS_DATA_SOURCE;
+afterEach(() => {
+	resetBirdclawPathsForTests();
+	delete process.env.BIRDCLAW_HOME;
+	delete process.env.BIRDCLAW_CONFIG;
+	delete process.env.BIRDCLAW_BIRD_COMMAND;
+	delete process.env.BIRDCLAW_MENTIONS_DATA_SOURCE;
 
-		for (const tempRoot of tempRoots.splice(0)) {
-			rmSync(tempRoot, { recursive: true, force: true });
-		}
-	});
+	for (const tempRoot of tempRoots.splice(0)) {
+		rmSync(tempRoot, { recursive: true, force: true });
+	}
+});
 
 describe("config", () => {
 	it("uses BIRDCLAW_HOME when set", () => {
