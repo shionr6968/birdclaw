@@ -1,11 +1,8 @@
 import type Database from "better-sqlite3";
-import { blockUserViaBird, unblockUserViaBird } from "./bird-actions";
 import { getNativeDb } from "./db";
 import {
 	getAccountHandle,
 	getDefaultAccountId,
-	normalizeProfileQuery,
-	resolveProfile,
 	toProfile,
 } from "./moderation-target";
 import type {
@@ -16,6 +13,8 @@ import type {
 } from "./types";
 import { upsertProfileFromXUser } from "./x-profile";
 import { listBlockedUsers, lookupAuthenticatedUser } from "./xurl";
+
+export { addBlock, recordBlock, removeBlock } from "./blocks-write";
 
 function remoteBlockSyncDisabled() {
 	return process.env.BIRDCLAW_DISABLE_LIVE_WRITES === "1";
@@ -59,17 +58,6 @@ function pruneRemoteBlocks(
       and profile_id not in (${placeholders})
     `,
 	).run(accountId, ...profileIds);
-}
-
-function getBirdActionQuery(
-	query: string,
-	resolved: Awaited<ReturnType<typeof resolveProfile>>,
-) {
-	return (
-		resolved.externalUserId ??
-		resolved.profile.handle ??
-		normalizeProfileQuery(query)
-	);
 }
 
 export function listBlocks({
@@ -220,108 +208,6 @@ export function getBlocksResponse({
 			search,
 			limit: Math.min(limit ?? 8, 12),
 		}),
-	};
-}
-
-export async function addBlock(accountId: string, query: string) {
-	const db = getNativeDb();
-	const resolvedAccountId = accountId || getDefaultAccountId(db);
-	const accountHandle = getAccountHandle(db, resolvedAccountId);
-	if (normalizeProfileQuery(query) === accountHandle) {
-		throw new Error("Cannot block the current account");
-	}
-	const resolved = await resolveProfile(query);
-	const transport = await blockUserViaBird(getBirdActionQuery(query, resolved));
-
-	if (!transport.ok) {
-		return {
-			ok: false,
-			action: "block",
-			accountId: resolvedAccountId,
-			profile: resolved.profile,
-			transport,
-		};
-	}
-
-	const blockedAt = new Date().toISOString();
-	db.prepare(
-		`
-    insert into blocks (account_id, profile_id, source, created_at)
-    values (?, ?, 'manual', ?)
-    on conflict(account_id, profile_id) do update set
-      source = excluded.source,
-      created_at = excluded.created_at
-    `,
-	).run(resolvedAccountId, resolved.profile.id, blockedAt);
-
-	return {
-		ok: true,
-		action: "block",
-		accountId: resolvedAccountId,
-		blockedAt,
-		profile: resolved.profile,
-		transport,
-	};
-}
-
-export async function recordBlock(accountId: string, query: string) {
-	const db = getNativeDb();
-	const resolvedAccountId = accountId || getDefaultAccountId(db);
-	const accountHandle = getAccountHandle(db, resolvedAccountId);
-	if (normalizeProfileQuery(query) === accountHandle) {
-		throw new Error("Cannot block the current account");
-	}
-	const resolved = await resolveProfile(query);
-
-	const blockedAt = new Date().toISOString();
-	db.prepare(
-		`
-    insert into blocks (account_id, profile_id, source, created_at)
-    values (?, ?, 'manual', ?)
-    on conflict(account_id, profile_id) do update set
-      source = excluded.source,
-      created_at = excluded.created_at
-    `,
-	).run(resolvedAccountId, resolved.profile.id, blockedAt);
-
-	return {
-		ok: true,
-		action: "record-block",
-		accountId: resolvedAccountId,
-		blockedAt,
-		profile: resolved.profile,
-	};
-}
-
-export async function removeBlock(accountId: string, query: string) {
-	const db = getNativeDb();
-	const resolvedAccountId = accountId || getDefaultAccountId(db);
-	const resolved = await resolveProfile(query);
-	const transport = await unblockUserViaBird(
-		getBirdActionQuery(query, resolved),
-	);
-
-	if (!transport.ok) {
-		return {
-			ok: false,
-			action: "unblock",
-			accountId: resolvedAccountId,
-			profile: resolved.profile,
-			transport,
-		};
-	}
-
-	db.prepare("delete from blocks where account_id = ? and profile_id = ?").run(
-		resolvedAccountId,
-		resolved.profile.id,
-	);
-
-	return {
-		ok: true,
-		action: "unblock",
-		accountId: resolvedAccountId,
-		profile: resolved.profile,
-		transport,
 	};
 }
 

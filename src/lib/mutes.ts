@@ -1,24 +1,8 @@
-import { muteUserViaBird, unmuteUserViaBird } from "./bird-actions";
 import { getNativeDb } from "./db";
-import {
-	getAccountHandle,
-	getDefaultAccountId,
-	normalizeProfileQuery,
-	resolveProfile,
-	toProfile,
-} from "./moderation-target";
+import { toProfile } from "./moderation-target";
 import type { BlockItem } from "./types";
 
-function getBirdActionQuery(
-	query: string,
-	resolved: Awaited<ReturnType<typeof resolveProfile>>,
-) {
-	return (
-		resolved.externalUserId ??
-		resolved.profile.handle ??
-		normalizeProfileQuery(query)
-	);
-}
+export { addMute, recordMute, removeMute } from "./mutes-write";
 
 export interface MuteItem {
 	accountId: string;
@@ -90,106 +74,4 @@ export function listMutes({
 		mutedAt: String(row.muted_at),
 		profile: toProfile(row),
 	}));
-}
-
-export async function addMute(accountId: string, query: string) {
-	const db = getNativeDb();
-	const resolvedAccountId = accountId || getDefaultAccountId(db);
-	const accountHandle = getAccountHandle(db, resolvedAccountId);
-	if (normalizeProfileQuery(query) === accountHandle) {
-		throw new Error("Cannot mute the current account");
-	}
-	const resolved = await resolveProfile(query);
-	const transport = await muteUserViaBird(getBirdActionQuery(query, resolved));
-
-	if (!transport.ok) {
-		return {
-			ok: false,
-			action: "mute",
-			accountId: resolvedAccountId,
-			profile: resolved.profile,
-			transport,
-		};
-	}
-
-	const mutedAt = new Date().toISOString();
-	db.prepare(
-		`
-    insert into mutes (account_id, profile_id, source, created_at)
-    values (?, ?, 'manual', ?)
-    on conflict(account_id, profile_id) do update set
-      source = excluded.source,
-      created_at = excluded.created_at
-    `,
-	).run(resolvedAccountId, resolved.profile.id, mutedAt);
-
-	return {
-		ok: true,
-		action: "mute",
-		accountId: resolvedAccountId,
-		mutedAt,
-		profile: resolved.profile,
-		transport,
-	};
-}
-
-export async function recordMute(accountId: string, query: string) {
-	const db = getNativeDb();
-	const resolvedAccountId = accountId || getDefaultAccountId(db);
-	const accountHandle = getAccountHandle(db, resolvedAccountId);
-	if (normalizeProfileQuery(query) === accountHandle) {
-		throw new Error("Cannot mute the current account");
-	}
-	const resolved = await resolveProfile(query);
-
-	const mutedAt = new Date().toISOString();
-	db.prepare(
-		`
-    insert into mutes (account_id, profile_id, source, created_at)
-    values (?, ?, 'manual', ?)
-    on conflict(account_id, profile_id) do update set
-      source = excluded.source,
-      created_at = excluded.created_at
-    `,
-	).run(resolvedAccountId, resolved.profile.id, mutedAt);
-
-	return {
-		ok: true,
-		action: "record-mute",
-		accountId: resolvedAccountId,
-		mutedAt,
-		profile: resolved.profile,
-	};
-}
-
-export async function removeMute(accountId: string, query: string) {
-	const db = getNativeDb();
-	const resolvedAccountId = accountId || getDefaultAccountId(db);
-	const resolved = await resolveProfile(query);
-	const transport = await unmuteUserViaBird(
-		getBirdActionQuery(query, resolved),
-	);
-
-	if (!transport.ok) {
-		return {
-			ok: false,
-			action: "unmute",
-			accountId: resolvedAccountId,
-			profile: resolved.profile,
-			transport,
-		};
-	}
-
-	db.prepare("delete from mutes where account_id = ? and profile_id = ?").run(
-		resolvedAccountId,
-		resolved.profile.id,
-	);
-
-	return {
-		ok: true,
-		action: "unmute",
-		accountId: resolvedAccountId,
-		profile: resolved.profile,
-		transport,
-	};
 }
