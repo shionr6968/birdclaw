@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -7,9 +7,20 @@ export interface BirdclawPaths {
 	dbPath: string;
 	mediaOriginalsDir: string;
 	mediaThumbsDir: string;
+	configPath: string;
+}
+
+export type MentionsDataSource = "birdclaw" | "xurl" | "bird";
+
+export interface BirdclawConfig {
+	mentions?: {
+		dataSource?: MentionsDataSource;
+		birdCommand?: string;
+	};
 }
 
 let cachedPaths: BirdclawPaths | undefined;
+let cachedConfig: BirdclawConfig | undefined;
 
 export function getBirdclawPaths(): BirdclawPaths {
 	if (cachedPaths) {
@@ -24,9 +35,77 @@ export function getBirdclawPaths(): BirdclawPaths {
 		dbPath: path.join(rootDir, "birdclaw.sqlite"),
 		mediaOriginalsDir: path.join(rootDir, "media", "originals"),
 		mediaThumbsDir: path.join(rootDir, "media", "thumbs"),
+		configPath: path.join(rootDir, "config.json"),
 	};
 
 	return cachedPaths;
+}
+
+function parseConfigFile(configPath: string): BirdclawConfig {
+	if (!existsSync(configPath)) {
+		return {};
+	}
+
+	const raw = readFileSync(configPath, "utf8").trim();
+	if (!raw) {
+		return {};
+	}
+
+	const parsed = JSON.parse(raw) as BirdclawConfig;
+	return parsed && typeof parsed === "object" ? parsed : {};
+}
+
+export function getBirdclawConfig(): BirdclawConfig {
+	if (cachedConfig) {
+		return cachedConfig;
+	}
+
+	const configPath =
+		process.env.BIRDCLAW_CONFIG?.trim() || getBirdclawPaths().configPath;
+	cachedConfig = parseConfigFile(configPath);
+	return cachedConfig;
+}
+
+export function resolveMentionsDataSource(
+	requestedMode?: string,
+): MentionsDataSource {
+	if (
+		requestedMode === "birdclaw" ||
+		requestedMode === "xurl" ||
+		requestedMode === "bird"
+	) {
+		return requestedMode;
+	}
+
+	const envMode = process.env.BIRDCLAW_MENTIONS_DATA_SOURCE?.trim();
+	if (envMode === "birdclaw" || envMode === "xurl" || envMode === "bird") {
+		return envMode;
+	}
+
+	const configMode = getBirdclawConfig().mentions?.dataSource;
+	if (
+		configMode === "birdclaw" ||
+		configMode === "xurl" ||
+		configMode === "bird"
+	) {
+		return configMode;
+	}
+
+	return "birdclaw";
+}
+
+export function getBirdCommand() {
+	const envCommand = process.env.BIRDCLAW_BIRD_COMMAND?.trim();
+	if (envCommand) {
+		return envCommand;
+	}
+
+	const configuredCommand = getBirdclawConfig().mentions?.birdCommand?.trim();
+	if (configuredCommand) {
+		return configuredCommand;
+	}
+
+	return path.join(os.homedir(), "Projects", "bird", "bird");
 }
 
 export function ensureBirdclawDirs(): BirdclawPaths {
@@ -41,4 +120,5 @@ export function ensureBirdclawDirs(): BirdclawPaths {
 
 export function resetBirdclawPathsForTests() {
 	cachedPaths = undefined;
+	cachedConfig = undefined;
 }

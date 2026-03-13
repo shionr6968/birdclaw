@@ -40,7 +40,7 @@ birdclaw [global flags] <subcommand> [args]
 Flags > env > project config > user config
 
 User config:
-- `~/.config/birdclaw/config.json5`
+- `~/.birdclaw/config.json`
 
 Project config:
 - `./.birdclawrc.json5`
@@ -173,7 +173,7 @@ Flags:
 
 - export local mention tweets for scripts and agents
 - always emits JSON
-- supports `birdclaw` or cached `xurl`-compatible output
+- supports `birdclaw`, cached `xurl`, or cached `bird` output
 - each item includes:
   - raw `text`
   - rendered `plainText`
@@ -183,27 +183,36 @@ Flags:
 
 Flags:
 - `--account <account-id>`
-- `--mode birdclaw|xurl`
+- `--mode birdclaw|xurl|bird`
 - `--replied`
 - `--unreplied`
 - `--refresh`
 - `--cache-ttl <seconds>`
+- `--all`
+- `--max-pages <n>`
 - `--limit <n>`
 
 Examples:
 
 ```bash
 birdclaw mentions export "agent" --unreplied --limit 10
+birdclaw mentions export --mode bird --limit 20
 birdclaw mentions export --mode xurl --limit 5
 birdclaw mentions export "codex" --mode xurl --limit 5
 birdclaw mentions export --mode xurl --refresh --cache-ttl 30 --limit 5
+birdclaw mentions export --mode xurl --refresh --all --max-pages 9 --limit 100
 ```
 
 Notes:
 - `--mode xurl` mirrors the `xurl mentions` response shape: `data`, `includes.users`, `meta`
+- `--mode bird` shells out to your local `bird` CLI, normalizes the JSON to that same `xurl`-compatible shape, then caches it in SQLite
 - payload is cached in local SQLite and reused until the cache TTL expires
 - `--refresh` bypasses the cache and fetches live mentions immediately
+- `--all` keeps paginating until the retrievable mentions window is exhausted
+- `--max-pages` limits that paged xurl scan and implies `--all`
+- in paged `xurl` mode, `--limit` is the page size, not the total returned item count
 - query and reply-state filters still work in `xurl` mode, but the filtered response is rebuilt from the local canonical store after sync
+- default live source can live in `~/.birdclaw/config.json` under `mentions.dataSource`
 
 ### `profiles replies <handle-or-id>`
 

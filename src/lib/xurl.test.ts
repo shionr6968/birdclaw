@@ -129,7 +129,11 @@ describe("xurl transport wrapper", () => {
 		]);
 	});
 
-	it("lists mentions via the xurl shortcut", async () => {
+	it("lists mentions via the xurl users mentions endpoint", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({
+			stdout: JSON.stringify({ data: [{ id: "25401953" }] }),
+			stderr: "",
+		});
 		execFileAsyncMock.mockResolvedValueOnce({
 			stdout: JSON.stringify({
 				data: [{ id: "tweet_1", author_id: "42", text: "hello" }],
@@ -151,11 +155,32 @@ describe("xurl transport wrapper", () => {
 			meta: { result_count: 1 },
 		});
 		expect(execFileAsyncMock).toHaveBeenCalledWith("xurl", [
-			"mentions",
-			"-n",
-			"5",
-			"--username",
-			"steipete",
+			"/2/users/25401953/mentions?max_results=5&expansions=author_id&tweet.fields=created_at%2Cconversation_id%2Centities%2Cpublic_metrics&user.fields=description%2Cpublic_metrics%2Cprofile_image_url%2Ccreated_at%2Cverified",
+		]);
+	});
+
+	it("passes pagination tokens for mention scans when present", async () => {
+		execFileAsyncMock.mockResolvedValueOnce({
+			stdout: JSON.stringify({
+				data: [],
+				meta: { next_token: "next-page" },
+			}),
+			stderr: "",
+		});
+		const { listMentionsViaXurl } = await import("./xurl");
+
+		await expect(
+			listMentionsViaXurl({
+				maxResults: 100,
+				userId: "25401953",
+				paginationToken: "next-page",
+			}),
+		).resolves.toEqual({
+			data: [],
+			meta: { next_token: "next-page" },
+		});
+		expect(execFileAsyncMock).toHaveBeenCalledWith("xurl", [
+			"/2/users/25401953/mentions?max_results=100&expansions=author_id&tweet.fields=created_at%2Cconversation_id%2Centities%2Cpublic_metrics&user.fields=description%2Cpublic_metrics%2Cprofile_image_url%2Ccreated_at%2Cverified&pagination_token=next-page",
 		]);
 	});
 

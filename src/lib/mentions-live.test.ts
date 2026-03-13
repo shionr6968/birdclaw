@@ -7,10 +7,18 @@ import { resetBirdclawPathsForTests } from "./config";
 import { getNativeDb, resetDatabaseForTests } from "./db";
 import { listTimelineItems } from "./queries";
 
+const listMentionsViaBirdMock = vi.fn();
 const listMentionsViaXurlMock = vi.fn();
+const lookupUsersByHandlesMock = vi.fn();
+
+vi.mock("./bird", () => ({
+	listMentionsViaBird: (...args: unknown[]) => listMentionsViaBirdMock(...args),
+}));
 
 vi.mock("./xurl", () => ({
 	listMentionsViaXurl: (...args: unknown[]) => listMentionsViaXurlMock(...args),
+	lookupUsersByHandles: (...args: unknown[]) =>
+		lookupUsersByHandlesMock(...args),
 }));
 
 const tempDirs: string[] = [];
@@ -26,7 +34,10 @@ function makeTempHome() {
 
 describe("cached live mentions", () => {
 	beforeEach(() => {
+		listMentionsViaBirdMock.mockReset();
 		listMentionsViaXurlMock.mockReset();
+		lookupUsersByHandlesMock.mockReset();
+		lookupUsersByHandlesMock.mockResolvedValue([{ id: "25401953" }]);
 	});
 
 	afterEach(() => {
@@ -79,6 +90,8 @@ describe("cached live mentions", () => {
 			},
 			meta: {
 				result_count: 1,
+				page_count: 1,
+				next_token: null,
 			},
 		});
 		const { exportMentionsViaCachedXurl } = await import("./mentions-live");
@@ -89,10 +102,18 @@ describe("cached live mentions", () => {
 			refresh: true,
 		});
 
-		expect(payload.meta).toEqual({ result_count: 1 });
+		expect(payload.meta).toEqual(
+			expect.objectContaining({
+				result_count: 1,
+				page_count: 1,
+				next_token: null,
+			}),
+		);
 		expect(listMentionsViaXurlMock).toHaveBeenCalledWith({
 			maxResults: 5,
 			username: "steipete",
+			userId: "25401953",
+			paginationToken: undefined,
 		});
 
 		const mentions = listTimelineItems({
@@ -205,8 +226,165 @@ describe("cached live mentions", () => {
 			limit: 5,
 		});
 
-		expect(second.meta).toEqual({ result_count: 1 });
+		expect(second.meta).toEqual(
+			expect.objectContaining({
+				result_count: 1,
+				page_count: 1,
+				next_token: null,
+			}),
+		);
 		expect(listMentionsViaXurlMock).toHaveBeenCalledTimes(1);
+	});
+
+	it("fetches bird mentions, caches them, and syncs them into the local timeline", async () => {
+		makeTempHome();
+		listMentionsViaBirdMock.mockResolvedValueOnce({
+			data: [
+				{
+					id: "tweet_live_bird_1",
+					author_id: "88",
+					text: "Cached hello from bird",
+					created_at: "2026-03-09T02:00:00.000Z",
+					conversation_id: "tweet_root_1",
+					public_metrics: {
+						like_count: 4,
+					},
+				},
+			],
+			includes: {
+				users: [
+					{
+						id: "88",
+						username: "birdsam",
+						name: "Bird Sam",
+					},
+				],
+			},
+			meta: {
+				result_count: 1,
+				page_count: 1,
+				next_token: null,
+			},
+		});
+		const { exportMentionsViaCachedBird } = await import("./mentions-live");
+
+		const payload = await exportMentionsViaCachedBird({
+			account: "acct_primary",
+			limit: 5,
+			refresh: true,
+		});
+
+		expect(payload.meta).toEqual(
+			expect.objectContaining({
+				result_count: 1,
+				page_count: 1,
+				next_token: null,
+			}),
+		);
+		expect(listMentionsViaBirdMock).toHaveBeenCalledWith({
+			maxResults: 5,
+		});
+		expect(lookupUsersByHandlesMock).not.toHaveBeenCalled();
+
+		const mentions = listTimelineItems({
+			resource: "mentions",
+			search: "bird",
+			limit: 10,
+		});
+		expect(mentions).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: "tweet_live_bird_1",
+					text: "Cached hello from bird",
+					accountId: "acct_primary",
+					author: expect.objectContaining({
+						handle: "birdsam",
+						displayName: "Bird Sam",
+					}),
+				}),
+			]),
+		);
+	});
+
+	it("can merge every retrievable xurl mention page into one payload", async () => {
+		makeTempHome();
+		listMentionsViaXurlMock
+			.mockResolvedValueOnce({
+				data: [
+					{
+						id: "tweet_live_page_1",
+						author_id: "7",
+						text: "page one",
+						created_at: "2026-03-09T02:01:00.000Z",
+					},
+				],
+				includes: {
+					users: [{ id: "7", username: "amelia", name: "Amelia" }],
+				},
+				meta: {
+					result_count: 1,
+					next_token: "page-2",
+				},
+			})
+			.mockResolvedValueOnce({
+				data: [
+					{
+						id: "tweet_live_page_2",
+						author_id: "9",
+						text: "page two",
+						created_at: "2026-03-09T02:02:00.000Z",
+					},
+				],
+				includes: {
+					users: [{ id: "9", username: "ava", name: "Ava" }],
+				},
+				meta: {
+					result_count: 1,
+				},
+			});
+		const { exportMentionsViaCachedXurl } = await import("./mentions-live");
+
+		const payload = await exportMentionsViaCachedXurl({
+			account: "acct_primary",
+			limit: 5,
+			all: true,
+			refresh: true,
+		});
+
+		expect(payload.data.map((item) => item.id)).toEqual([
+			"tweet_live_page_1",
+			"tweet_live_page_2",
+		]);
+		expect(payload.includes?.users?.map((item) => item.username)).toEqual([
+			"amelia",
+			"ava",
+		]);
+		expect(payload.meta).toEqual(
+			expect.objectContaining({
+				result_count: 2,
+				page_count: 2,
+				next_token: null,
+			}),
+		);
+		expect(listMentionsViaXurlMock).toHaveBeenNthCalledWith(1, {
+			maxResults: 5,
+			username: "steipete",
+			userId: "25401953",
+			paginationToken: undefined,
+		});
+		expect(listMentionsViaXurlMock).toHaveBeenNthCalledWith(2, {
+			maxResults: 5,
+			username: "steipete",
+			userId: "25401953",
+			paginationToken: "page-2",
+		});
+		expect(
+			listTimelineItems({
+				resource: "mentions",
+				search: "page",
+				limit: 10,
+			}).map((item) => item.id),
+		).toEqual(["tweet_live_page_2", "tweet_live_page_1"]);
 	});
 
 	it("returns filtered xurl-compatible payloads from the local cache", async () => {
@@ -239,6 +417,8 @@ describe("cached live mentions", () => {
 			},
 			meta: {
 				result_count: 1,
+				page_count: 1,
+				next_token: null,
 			},
 		});
 		const { exportMentionsViaCachedXurl } = await import("./mentions-live");
@@ -295,6 +475,8 @@ describe("cached live mentions", () => {
 			},
 			meta: {
 				result_count: 1,
+				page_count: 1,
+				next_token: null,
 			},
 		});
 		const { exportMentionsViaCachedXurl } = await import("./mentions-live");
@@ -327,6 +509,8 @@ describe("cached live mentions", () => {
 			},
 			meta: {
 				result_count: 1,
+				page_count: 1,
+				next_token: null,
 			},
 		});
 		expect(listMentionsViaXurlMock).toHaveBeenCalledTimes(2);
@@ -342,6 +526,13 @@ describe("cached live mentions", () => {
 				limit: 4,
 			}),
 		).rejects.toThrow("xurl mode requires --limit between 5 and 100");
+		await expect(
+			exportMentionsViaCachedXurl({
+				account: "acct_primary",
+				limit: 5,
+				maxPages: 0,
+			}),
+		).rejects.toThrow("--max-pages must be at least 1");
 	});
 
 	it("throws for unknown accounts and refresh failures without cache fallback", async () => {

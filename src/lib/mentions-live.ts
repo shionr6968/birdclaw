@@ -1,4 +1,6 @@
 import type Database from "better-sqlite3";
+import { listMentionsViaBird } from "./bird";
+import type { MentionsDataSource } from "./config";
 import { getNativeDb } from "./db";
 import { serializeMentionItemsAsXurlCompatible } from "./mentions-export";
 import { listTimelineItems } from "./queries";
@@ -10,14 +12,26 @@ import type {
 	XurlMentionsResponse,
 } from "./types";
 import { ensureStubProfileForXUser, upsertProfileFromXUser } from "./x-profile";
-import { listMentionsViaXurl } from "./xurl";
+import { listMentionsViaXurl, lookupUsersByHandles } from "./xurl";
 
 export const DEFAULT_MENTIONS_CACHE_TTL_MS = 2 * 60_000;
 const MIN_XURL_MENTIONS_LIMIT = 5;
 const MAX_XURL_MENTIONS_LIMIT = 100;
 
-function getMentionsCacheKey(accountId: string, limit: number) {
-	return `mentions:xurl:${accountId}:${String(limit)}`;
+function getMentionsFetchModeKey({
+	mode,
+	accountId,
+	pageSize,
+	all,
+	maxPages,
+}: {
+	mode: MentionsDataSource;
+	accountId: string;
+	pageSize: number;
+	all: boolean;
+	maxPages: number | null;
+}) {
+	return `mentions:${mode}:${accountId}:${String(pageSize)}:${all ? "all" : "single"}:${maxPages === null ? "all-pages" : String(maxPages)}`;
 }
 
 function parseCacheTtlMs(value?: number) {
@@ -31,6 +45,22 @@ function assertXurlLimit(limit: number) {
 	if (limit < MIN_XURL_MENTIONS_LIMIT || limit > MAX_XURL_MENTIONS_LIMIT) {
 		throw new Error("xurl mode requires --limit between 5 and 100");
 	}
+}
+
+function assertBirdLimit(limit: number) {
+	if (!Number.isFinite(limit) || limit < 1) {
+		throw new Error("bird mode requires --limit of at least 1");
+	}
+}
+
+function parseMaxPages(value?: number) {
+	if (value === undefined) {
+		return null;
+	}
+	if (!Number.isFinite(value) || value < 1) {
+		throw new Error("--max-pages must be at least 1");
+	}
+	return Math.floor(value);
 }
 
 function resolveAccount(db: Database.Database, accountId?: string) {
@@ -222,26 +252,131 @@ function readLocalXurlCompatiblePayload({
 	);
 }
 
-export async function exportMentionsViaCachedXurl({
+function mergeMentionPayloads(
+	pages: XurlMentionsResponse[],
+): XurlMentionsResponse {
+	const tweets: XurlMentionData[] = [];
+	const seenTweetIds = new Set<string>();
+	const users: XurlMentionsResponse["includes"] extends { users?: infer T }
+		? T extends Array<infer U>
+			? U[]
+			: never
+		: never = [];
+	const seenUserIds = new Set<string>();
+
+	for (const page of pages) {
+		for (const tweet of page.data) {
+			if (seenTweetIds.has(tweet.id)) {
+				continue;
+			}
+			seenTweetIds.add(tweet.id);
+			tweets.push(tweet);
+		}
+
+		for (const user of page.includes?.users ?? []) {
+			if (seenUserIds.has(user.id)) {
+				continue;
+			}
+			seenUserIds.add(user.id);
+			users.push(user);
+		}
+	}
+
+	const lastMeta = pages.at(-1)?.meta;
+	return {
+		data: tweets,
+		includes: users.length > 0 ? { users } : undefined,
+		meta: {
+			...(lastMeta ?? {}),
+			result_count: tweets.length,
+			page_count: pages.length,
+			next_token:
+				typeof lastMeta?.next_token === "string" ? lastMeta.next_token : null,
+		},
+	};
+}
+
+async function fetchMentionsViaXurl({
+	resolvedAccount,
+	limit,
+	all,
+	parsedMaxPages,
+}: {
+	resolvedAccount: ReturnType<typeof resolveAccount>;
+	limit: number;
+	all: boolean;
+	parsedMaxPages: number | null;
+}) {
+	const [accountUser] = await lookupUsersByHandles([resolvedAccount.username]);
+	if (!accountUser?.id) {
+		throw new Error(
+			`Could not resolve X user id for @${resolvedAccount.username}`,
+		);
+	}
+
+	const pages: XurlMentionsResponse[] = [];
+	let nextToken: string | undefined;
+	let pageCount = 0;
+	do {
+		const payload = await listMentionsViaXurl({
+			maxResults: limit,
+			username: resolvedAccount.username,
+			userId: String(accountUser.id),
+			paginationToken: nextToken,
+		});
+		pages.push(payload);
+		const metaNextToken =
+			typeof payload.meta?.next_token === "string"
+				? payload.meta.next_token
+				: undefined;
+		nextToken = metaNextToken;
+		pageCount += 1;
+	} while (
+		all &&
+		nextToken &&
+		(parsedMaxPages === null || pageCount < parsedMaxPages)
+	);
+
+	return mergeMentionPayloads(pages);
+}
+
+async function exportMentionsViaCachedLiveSource({
+	mode,
 	account,
 	search,
 	replyFilter = "all",
 	limit = 20,
+	all = false,
+	maxPages,
 	refresh = false,
 	cacheTtlMs,
 }: {
+	mode: MentionsDataSource;
 	account?: string;
 	search?: string;
 	replyFilter?: ReplyFilter;
 	limit?: number;
+	all?: boolean;
+	maxPages?: number;
 	refresh?: boolean;
 	cacheTtlMs?: number;
 }) {
-	assertXurlLimit(limit);
+	if (mode === "xurl") {
+		assertXurlLimit(limit);
+	} else {
+		assertBirdLimit(limit);
+	}
+	const parsedMaxPages = parseMaxPages(maxPages);
 
 	const db = getNativeDb();
 	const resolvedAccount = resolveAccount(db, account);
-	const cacheKey = getMentionsCacheKey(resolvedAccount.accountId, limit);
+	const cacheKey = getMentionsFetchModeKey({
+		mode,
+		accountId: resolvedAccount.accountId,
+		pageSize: limit,
+		all,
+		maxPages: parsedMaxPages,
+	});
 	const ttlMs = parseCacheTtlMs(cacheTtlMs);
 	const cached = readSyncCache<XurlMentionsResponse>(cacheKey, db);
 	const cacheAgeMs = cached
@@ -259,17 +394,22 @@ export async function exportMentionsViaCachedXurl({
 				accountId: resolvedAccount.accountId,
 				search,
 				replyFilter,
-				limit,
+				limit: all ? cached.value.data.length : limit,
 			});
 		}
 		return cached.value;
 	}
 
 	try {
-		const payload = await listMentionsViaXurl({
-			maxResults: limit,
-			username: resolvedAccount.username,
-		});
+		const payload =
+			mode === "bird"
+				? await listMentionsViaBird({ maxResults: limit })
+				: await fetchMentionsViaXurl({
+						resolvedAccount,
+						limit,
+						all,
+						parsedMaxPages,
+					});
 		mergeMentionsIntoLocalStore(db, resolvedAccount.accountId, payload);
 		writeSyncCache(cacheKey, payload, db);
 
@@ -283,7 +423,7 @@ export async function exportMentionsViaCachedXurl({
 				accountId: resolvedAccount.accountId,
 				search,
 				replyFilter,
-				limit,
+				limit: all ? payload.data.length : limit,
 			});
 		}
 
@@ -300,11 +440,35 @@ export async function exportMentionsViaCachedXurl({
 					accountId: resolvedAccount.accountId,
 					search,
 					replyFilter,
-					limit,
+					limit: all ? cached.value.data.length : limit,
 				});
 			}
 			return cached.value;
 		}
 		throw error;
 	}
+}
+
+export async function exportMentionsViaCachedXurl(
+	options: Omit<
+		Parameters<typeof exportMentionsViaCachedLiveSource>[0],
+		"mode"
+	>,
+) {
+	return exportMentionsViaCachedLiveSource({
+		...options,
+		mode: "xurl",
+	});
+}
+
+export async function exportMentionsViaCachedBird(
+	options: Omit<
+		Parameters<typeof exportMentionsViaCachedLiveSource>[0],
+		"mode"
+	>,
+) {
+	return exportMentionsViaCachedLiveSource({
+		...options,
+		mode: "bird",
+	});
 }

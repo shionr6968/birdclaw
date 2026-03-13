@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ensureBirdclawDirsMock = vi.fn();
 const getBirdclawPathsMock = vi.fn();
+const resolveMentionsDataSourceMock = vi.fn();
 const getQueryEnvelopeMock = vi.fn();
 const findArchivesMock = vi.fn();
 const importArchiveMock = vi.fn();
 const importBlocklistMock = vi.fn();
 const addBlockMock = vi.fn();
 const exportMentionItemsMock = vi.fn();
+const exportMentionsViaCachedBirdMock = vi.fn();
 const exportMentionsViaCachedXurlMock = vi.fn();
 const listBlocksMock = vi.fn();
 const addMuteMock = vi.fn();
@@ -40,6 +42,8 @@ Object.defineProperty(
 vi.mock("#/lib/config", () => ({
 	ensureBirdclawDirs: () => ensureBirdclawDirsMock(),
 	getBirdclawPaths: () => getBirdclawPathsMock(),
+	resolveMentionsDataSource: (...args: unknown[]) =>
+		resolveMentionsDataSourceMock(...args),
 }));
 
 vi.mock("#/lib/archive-finder", () => ({
@@ -76,6 +80,8 @@ vi.mock("#/lib/mentions-export", () => ({
 }));
 
 vi.mock("#/lib/mentions-live", () => ({
+	exportMentionsViaCachedBird: (...args: unknown[]) =>
+		exportMentionsViaCachedBirdMock(...args),
 	exportMentionsViaCachedXurl: (...args: unknown[]) =>
 		exportMentionsViaCachedXurlMock(...args),
 }));
@@ -114,12 +120,14 @@ describe("cli", () => {
 		consoleLogMock.mockClear();
 		ensureBirdclawDirsMock.mockReset();
 		getBirdclawPathsMock.mockReset();
+		resolveMentionsDataSourceMock.mockReset();
 		getQueryEnvelopeMock.mockReset();
 		findArchivesMock.mockReset();
 		importArchiveMock.mockReset();
 		importBlocklistMock.mockReset();
 		addBlockMock.mockReset();
 		exportMentionItemsMock.mockReset();
+		exportMentionsViaCachedBirdMock.mockReset();
 		exportMentionsViaCachedXurlMock.mockReset();
 		listBlocksMock.mockReset();
 		addMuteMock.mockReset();
@@ -140,6 +148,7 @@ describe("cli", () => {
 
 		ensureBirdclawDirsMock.mockReturnValue({
 			rootDir: "/tmp/.birdclaw",
+			configPath: "/tmp/.birdclaw/config.json",
 			dbPath: "/tmp/.birdclaw/birdclaw.sqlite",
 			mediaOriginalsDir: "/tmp/.birdclaw/media/originals",
 			mediaThumbsDir: "/tmp/.birdclaw/media/thumbs",
@@ -148,6 +157,9 @@ describe("cli", () => {
 			rootDir: "/tmp/.birdclaw",
 			dbPath: "/tmp/.birdclaw/birdclaw.sqlite",
 		});
+		resolveMentionsDataSourceMock.mockImplementation((mode?: string) =>
+			mode ?? "birdclaw",
+		);
 		getQueryEnvelopeMock.mockResolvedValue({
 			stats: { home: 4, mentions: 2, dms: 4, needsReply: 2, inbox: 4 },
 			transport: { statusText: "local", installed: false },
@@ -176,6 +188,11 @@ describe("cli", () => {
 				markdown: "markdown",
 			},
 		]);
+		exportMentionsViaCachedBirdMock.mockResolvedValue({
+			data: [{ id: "tweet_live_bird_1" }],
+			includes: { users: [{ id: "42", username: "sam", name: "Sam" }] },
+			meta: { result_count: 1 },
+		});
 		exportMentionsViaCachedXurlMock.mockResolvedValue({
 			data: [{ id: "tweet_live_1" }],
 			includes: { users: [{ id: "42", username: "sam", name: "Sam" }] },
@@ -254,6 +271,63 @@ describe("cli", () => {
 		await runCli(["node", "birdclaw", "--json", "import", "archive"]);
 
 		expect(importArchiveMock).toHaveBeenCalledWith("/tmp/twitter.zip");
+	});
+
+	it("dispatches paged live mention exports", async () => {
+		const { runCli } = await loadCli();
+
+		await runCli([
+			"node",
+			"birdclaw",
+			"mentions",
+			"export",
+			"--mode",
+			"xurl",
+			"--all",
+			"--max-pages",
+			"9",
+			"--limit",
+			"100",
+			"--refresh",
+		]);
+
+		expect(exportMentionsViaCachedXurlMock).toHaveBeenCalledWith({
+			account: undefined,
+			search: undefined,
+			replyFilter: "all",
+			limit: 100,
+			all: true,
+			maxPages: 9,
+			refresh: true,
+			cacheTtlMs: 120000,
+		});
+	});
+
+	it("uses configured bird mode for cached mention exports", async () => {
+		resolveMentionsDataSourceMock.mockReturnValue("bird");
+		const { runCli } = await loadCli();
+
+		await runCli([
+			"node",
+			"birdclaw",
+			"mentions",
+			"export",
+			"--refresh",
+			"--limit",
+			"12",
+		]);
+
+		expect(exportMentionsViaCachedBirdMock).toHaveBeenCalledWith({
+			account: undefined,
+			search: undefined,
+			replyFilter: "all",
+			limit: 12,
+			all: false,
+			maxPages: undefined,
+			refresh: true,
+			cacheTtlMs: 120000,
+		});
+		expect(exportMentionsViaCachedXurlMock).not.toHaveBeenCalled();
 	});
 
 	it("imports an explicit archive path without discovery", async () => {
@@ -612,6 +686,42 @@ describe("cli", () => {
 			search: undefined,
 			replyFilter: "all",
 			limit: 5,
+			all: false,
+			maxPages: undefined,
+			refresh: true,
+			cacheTtlMs: 45_000,
+		});
+		expect(consoleLogMock).toHaveBeenCalledWith(
+			expect.stringContaining('"result_count": 1'),
+		);
+	});
+
+	it("exports mentions in cached bird mode", async () => {
+		const { runCli } = await loadCli();
+
+		await runCli([
+			"node",
+			"birdclaw",
+			"mentions",
+			"export",
+			"--mode",
+			"bird",
+			"--account",
+			"acct_primary",
+			"--refresh",
+			"--cache-ttl",
+			"45",
+			"--limit",
+			"5",
+		]);
+
+		expect(exportMentionsViaCachedBirdMock).toHaveBeenCalledWith({
+			account: "acct_primary",
+			search: undefined,
+			replyFilter: "all",
+			limit: 5,
+			all: false,
+			maxPages: undefined,
 			refresh: true,
 			cacheTtlMs: 45_000,
 		});

@@ -7,10 +7,17 @@ import { findArchives } from "#/lib/archive-finder";
 import { importArchive } from "#/lib/archive-import";
 import { importBlocklist } from "#/lib/blocklist";
 import { addBlock, listBlocks, removeBlock } from "#/lib/blocks";
-import { ensureBirdclawDirs, getBirdclawPaths } from "#/lib/config";
+import {
+	ensureBirdclawDirs,
+	getBirdclawPaths,
+	resolveMentionsDataSource,
+} from "#/lib/config";
 import { listInboxItems, scoreInbox } from "#/lib/inbox";
 import { exportMentionItems } from "#/lib/mentions-export";
-import { exportMentionsViaCachedXurl } from "#/lib/mentions-live";
+import {
+	exportMentionsViaCachedBird,
+	exportMentionsViaCachedXurl,
+} from "#/lib/mentions-live";
 import { addMute, listMutes, removeMute } from "#/lib/mutes";
 import { hydrateProfilesFromX } from "#/lib/profile-hydration";
 import { inspectProfileReplies } from "#/lib/profile-replies";
@@ -48,6 +55,7 @@ program
 			{
 				ok: true,
 				rootDir: paths.rootDir,
+				configPath: paths.configPath,
 				dbPath: paths.dbPath,
 				mediaOriginalsDir: paths.mediaOriginalsDir,
 				mediaThumbsDir: paths.mediaThumbsDir,
@@ -176,11 +184,16 @@ mentionsCommand
 	.command("export [query]")
 	.description("Return mention tweets with plain-text and markdown renderings")
 	.option("--account <accountId>", "Account id")
-	.option("--mode <mode>", "birdclaw or xurl", "birdclaw")
+	.option("--mode <mode>", "birdclaw, xurl, or bird")
 	.option("--replied", "Only replied items")
 	.option("--unreplied", "Only unreplied items")
 	.option("--refresh", "Refresh the live xurl cache before returning")
 	.option("--cache-ttl <seconds>", "Live-cache freshness window", "120")
+	.option("--all", "Fetch every retrievable xurl mentions page")
+	.option(
+		"--max-pages <n>",
+		"Maximum xurl mention pages to fetch (implies --all)",
+	)
 	.option("--limit <n>", "Limit results", "20")
 	.action(async (query, options) => {
 		const replyFilter = options.replied
@@ -189,12 +202,29 @@ mentionsCommand
 				? "unreplied"
 				: "all";
 		const limit = Number(options.limit);
-		if (options.mode === "xurl") {
+		const mode = resolveMentionsDataSource(options.mode);
+		if (mode === "xurl") {
 			const payload = await exportMentionsViaCachedXurl({
 				account: options.account,
 				search: query,
 				replyFilter,
 				limit,
+				all: Boolean(options.all) || options.maxPages !== undefined,
+				maxPages: options.maxPages ? Number(options.maxPages) : undefined,
+				refresh: Boolean(options.refresh),
+				cacheTtlMs: Number(options.cacheTtl) * 1000,
+			});
+			print(payload, true);
+			return;
+		}
+		if (mode === "bird") {
+			const payload = await exportMentionsViaCachedBird({
+				account: options.account,
+				search: query,
+				replyFilter,
+				limit,
+				all: Boolean(options.all) || options.maxPages !== undefined,
+				maxPages: options.maxPages ? Number(options.maxPages) : undefined,
 				refresh: Boolean(options.refresh),
 				cacheTtlMs: Number(options.cacheTtl) * 1000,
 			});

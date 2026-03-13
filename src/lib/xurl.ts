@@ -259,16 +259,45 @@ export async function lookupAuthenticatedUser() {
 export async function listMentionsViaXurl({
 	maxResults,
 	username,
+	userId,
+	paginationToken,
 }: {
 	maxResults: number;
 	username?: string;
+	userId?: string;
+	paginationToken?: string;
 }): Promise<XurlMentionsResponse> {
-	const args = ["mentions", "-n", String(maxResults)];
-	if (username) {
-		args.push("--username", username);
+	let resolvedUserId = userId;
+	if (!resolvedUserId) {
+		if (username) {
+			const [user] = await lookupUsersByHandles([username]);
+			if (!user?.id) {
+				throw new Error(`Could not resolve X user id for @${username}`);
+			}
+			resolvedUserId = String(user.id);
+		} else {
+			const user = await lookupAuthenticatedUser();
+			if (!user?.id) {
+				throw new Error("Could not resolve authenticated X user id");
+			}
+			resolvedUserId = String(user.id);
+		}
 	}
 
-	const payload = await runJsonCommand(args);
+	const query = new URLSearchParams({
+		max_results: String(maxResults),
+		expansions: "author_id",
+		"tweet.fields": "created_at,conversation_id,entities,public_metrics",
+		"user.fields":
+			"description,public_metrics,profile_image_url,created_at,verified",
+	});
+	if (paginationToken) {
+		query.set("pagination_token", paginationToken);
+	}
+
+	const payload = await runJsonCommand([
+		`/2/users/${resolvedUserId}/mentions?${query.toString()}`,
+	]);
 	return {
 		data: Array.isArray(payload.data)
 			? (payload.data as XurlMentionsResponse["data"])

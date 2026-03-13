@@ -45,6 +45,7 @@ Status: WIP. Real and usable. Not done. Expect schema churn, transport gaps, and
 - OpenAI scoring hook for low-signal filtering
 - cached live mentions export in `xurl`-compatible JSON
 - live profile-reply inspection for borderline AI/slop triage
+- one-shot blocklist import from a file for batch moderation passes
 
 ### Actions
 
@@ -52,8 +53,10 @@ Status: WIP. Real and usable. Not done. Expect schema churn, transport gaps, and
 - reply to tweets
 - reply to DMs
 - add / remove local blocks
+- import batch blocklists in one call
 - add / remove local mutes
 - sync remote blocks through `xurl` when available
+- fall back to the X web cookie session when OAuth2 block writes are rejected
 
 ### Safety
 
@@ -153,6 +156,14 @@ Start the app:
 pnpm dev
 ```
 
+First moderation pass:
+
+```bash
+pnpm cli mentions export --mode xurl --refresh --all --max-pages 9 --limit 100
+pnpm cli profiles replies @borderline_handle --limit 12 --json
+pnpm cli blocks import ~/triage/blocklist.txt --account acct_primary --json
+```
+
 ## CLI Highlights
 
 ### Search local tweets
@@ -170,18 +181,35 @@ Default `birdclaw` mode returns normalized items with `text`, `plainText`, `mark
 pnpm cli mentions export "agent" --unreplied --limit 10
 ```
 
-`xurl` mode returns `xurl`-compatible `data/includes/meta`, but cached locally so repeat reads do not keep spending API calls:
+Cached live modes return `xurl`-compatible `data/includes/meta`, but stay in the local SQLite cache so repeat reads do not keep spending live calls:
 
 ```bash
+pnpm cli mentions export --mode bird --limit 20
+pnpm cli mentions export --mode bird --refresh --limit 20
 pnpm cli mentions export --mode xurl --limit 5
 pnpm cli mentions export --mode xurl --refresh --limit 5
+pnpm cli mentions export --mode xurl --refresh --all --max-pages 9 --limit 100
 pnpm cli mentions export "courtesy" --mode xurl --limit 5
+```
+
+Home config lives in `~/.birdclaw/config.json`. Example:
+
+```json
+{
+  "mentions": {
+    "dataSource": "bird",
+    "birdCommand": "/Users/steipete/Projects/bird/bird"
+  }
+}
 ```
 
 Notes:
 
 - `--refresh` forces a live fetch
 - `--cache-ttl <seconds>` tunes freshness
+- `--all` walks every retrievable mentions page; `--max-pages` caps that scan
+- in paged `xurl` mode, `--limit` is the per-page size
+- `bird` mode uses your local `bird` CLI and caches its mentions output into birdclaw's canonical store
 - filters still work in `xurl` mode; filtered payloads are rebuilt from the local canonical store after sync
 
 ### Search and triage DMs
@@ -217,6 +245,16 @@ Notes:
 - if X rejects `xurl` OAuth2 block writes, birdclaw falls back to the X web cookie session (`auth_token` + `ct0`) when available
 - `blocks import` accepts newline-delimited blocklists with comments and markdown bullets
 
+Example blocklist file:
+
+```text
+# crypto / AI slop
+@jpctan
+@SystemDaddyAi
+- @Pepe202579 memecoin bait
+https://x.com/someone/status/2030857479001960633?s=20
+```
+
 ### Profile reply scan
 
 ```bash
@@ -228,6 +266,10 @@ Notes:
 - for the "unsure if AI" case
 - scans recent authored tweets, excludes retweets, keeps replies
 - useful for spotting repeated generic praise, abstraction soup, or cross-thread templated cadence
+
+Typical tell:
+
+- same upbeat, generic reply shape across unrelated threads in a short time window
 
 ### Mutes
 
@@ -251,9 +293,11 @@ pnpm cli compose dm dm_003 "Send it over."
 2. hydrate imported profiles from live X metadata
 3. use `Home` for reading
 4. use `Mentions` for reply triage
-5. use `DMs` for high-context conversation work
-6. use `Inbox` when you want AI help cutting noise
-7. use CLI exports when agents need stable JSON
+5. when one account feels borderline, inspect `profiles replies`
+6. collect keepers into a blocklist file and run `blocks import`
+7. use `DMs` for high-context conversation work
+8. use `Inbox` when you want AI help cutting noise
+9. use CLI exports when agents need stable JSON
 
 ## Live Transport
 
